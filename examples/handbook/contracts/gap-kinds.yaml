@@ -17,6 +17,7 @@ kinds:
     detection:
       - Only incident-response runbooks are judged; a runbook whose okfx_structure is routine-procedure is absent by definition
       - The Escalation section itself names no person, team or channel to contact; frontmatter alone does not count, because a responder reads the body
+      - A role (an incident commander, the on-call engineer) or a team (legal, security) named as the one to contact counts as a contact
     priority: high
   - id: missing_rollback
     applies_to: [runbook]

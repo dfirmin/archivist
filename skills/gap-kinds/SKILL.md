@@ -17,7 +17,8 @@ engine supplies no kinds.
    entry whose `type` equals it). The kind applies when `enabled` is not false and
    `applies_to` holds that id. Not applicable → record it absent (below) and report why.
 3. Presence: the concept's structure, when a kind needs it (required sections, owners), is
-   the one named in its `okfx_structure`. Treat `context` as the evidence to inspect and
+   the one named in its `okfx_structure`: the file `<okfx_structure>.yaml` in the directory
+   `contracts.structures` names. Treat `context` as the evidence to inspect and
    `detection` as the binding decision list. Judge substance, not heading presence. When the
    kind lists `uses`, read those reference contracts the way their `guidance` says.
 4. Origin, only when present. Follow these steps in order and stop at the first that decides:
