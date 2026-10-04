@@ -28,7 +28,6 @@ class Target:
     target_repo: str
     type: str
     status: str
-    engine_version: str
     auto_trigger: bool
 
     @property
@@ -104,19 +103,11 @@ def load_targets(registry_path: Path | None = None) -> tuple[Target, ...]:
             target_repo=_required_text(raw, "target_repo", context=context),
             type=_required_text(raw, "type", context=context),
             status=_required_text(raw, "status", context=context),
-            engine_version=_required_text(raw, "engine_version", context=context),
             auto_trigger=bool(raw.get("auto_trigger", False)),
         )
         if target.status not in {"active", "inactive"}:
             raise TargetConfigError(
                 f"target {slug!r}: status must be 'active' or 'inactive'"
-            )
-        if not (
-            re.fullmatch(r"v\d+\.\d+\.\d+", target.engine_version)
-            or re.fullmatch(r"[0-9a-f]{40}", target.engine_version)
-        ):
-            raise TargetConfigError(
-                f"target {slug!r}: engine_version must be an immutable tag or commit SHA"
             )
         _ = target.github_slug  # validates the URL
         targets.append(target)

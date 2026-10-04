@@ -88,6 +88,8 @@ Judgement stays with the agents. Python only validates, prepares and launches.
   enforces it.
 - **Safe parallel gap checks.** One agent per gap kind runs in parallel. Each verdict goes through
   a locked, YAML-safe `record-gap` command, so concurrent agents can't lose each other's findings.
+- **Pinned engine versions.** Each target names the engine release it runs on; a newer engine
+  hands the run to the pinned release instead of changing a target's behaviour silently.
 - **Published for review.** Each run produces one branch and one pull request, with gap issues
   deduplicated by title across re-runs.
 
@@ -189,6 +191,7 @@ A minimal index:
 ```yaml
 version: 1
 slug: policy-notes
+engine: v0.1.0                        # the engine release this target runs on
 default_pipeline: summarize
 pipelines:
   summarize: [author, verifier]       # engine agents only
@@ -205,6 +208,30 @@ Two complete examples ship with the engine:
   contracts.
 
 Schemas for every contract kind are in [`schemas/contracts/`](schemas/contracts/).
+
+## Engine versions
+
+Every target pins the engine release it runs on, so an engine change never reaches a target
+until that target opts in:
+
+```yaml
+# contracts/target.yaml
+engine: v0.1.0          # a release tag, or a full commit SHA
+```
+
+- `prepare-target` writes the pin for you (the engine's own release, or `--engine vX.Y.Z`).
+- Every command that works on a target (`validate`, `load-target`, `prepare-workspace`,
+  `run-conductor`) checks the pin first. If the running engine is a different version, it
+  fetches the pinned release from `ARCHIVIST_ENGINE_REPO` (default: this repository), installs
+  it once into `ARCHIVIST_ENGINE_CACHE`, and hands the command to it. Agents calling
+  `archivist record-gap` during that run use the pinned engine too.
+- **Try** an upgrade for one run with `--engine v0.2.0` (or `ENGINE=v0.2.0` for
+  `run-conductor.sh`); `--engine current` uses the installed engine regardless of the pin.
+- **Adopt** an upgrade by changing `engine:` in the target repo through a pull request.
+
+Releasing the engine: set `version` in `pyproject.toml` and `src/archivist/__init__.py` to the
+release, tag `vX.Y.Z` on that commit, then move `main` to the next `.devN` version. A test keeps
+the two version strings equal.
 
 ## Configuration
 

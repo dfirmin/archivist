@@ -4,4 +4,6 @@
 version: 1
 slug: {{slug}}
 name: {{name}}
+# The engine release this target runs on. Upgrade by changing it in a pull request.
+engine: {{engine}}
 contracts: {}

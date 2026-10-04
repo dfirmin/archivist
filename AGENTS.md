@@ -34,7 +34,13 @@ engine runs many targets without engine changes.
 5. **Targets ship contracts only.** No target agents, no target skills, no overrides. A target
    chooses and orders engine agents through `pipelines` in `contracts/target.yaml`. Python
    refuses a target with `agents/`, `contracts/agents/` or `contracts/skills/`.
-6. **OKF is the output standard.** Use OKF's own frontmatter fields where OKF defines one
+6. **Targets are pinned to an engine release.** `engine:` in `contracts/target.yaml` decides
+   which engine runs a target; `archivist.engines` enforces it before any target command. A
+   change that alters what contracts mean or what agents produce ships in a new release; never
+   retag. Bump `version` in `pyproject.toml` and `__init__.py`, tag `vX.Y.Z`, then move `main`
+   to the next `.devN`. Contract schema changes must stay readable by the release that
+   introduced them: a target only moves when its pin moves.
+7. **OKF is the output standard.** Use OKF's own frontmatter fields where OKF defines one
    (`type`, `title`, `description`, `tags`, `sources`, `generated`, `verified`, `status` …).
    Every other field starts with `okfx_`; validation enforces it. The engine owns `okfx_gaps`
    and `okfx_confidence`.

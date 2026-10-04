@@ -51,7 +51,7 @@ def test_bare_zero_groups_is_malformed_and_listed_groups_win() -> None:
 
 
 def test_scaffold_writes_the_minimum_and_validation_names_what_is_missing(tmp_path: Path) -> None:
-    target = Target("acme", "Acme Docs", "d", "https://github.com/example-org/acme", "docs", "active", "v0.1.0", False)
+    target = Target("acme", "Acme Docs", "d", "https://github.com/example-org/acme", "docs", "active", False)
     result = scaffold_workspace(tmp_path / "acme", target)
     assert "contracts/target.yaml" in result.written
     workspace = tmp_path / "acme"
@@ -62,7 +62,7 @@ def test_scaffold_writes_the_minimum_and_validation_names_what_is_missing(tmp_pa
 
 
 def test_scaffold_refuses_a_foreign_repo(tmp_path: Path) -> None:
-    target = Target("acme", "Acme", "d", "https://github.com/example-org/acme", "docs", "active", "v0.1.0", False)
+    target = Target("acme", "Acme", "d", "https://github.com/example-org/acme", "docs", "active", False)
     (tmp_path / "src").mkdir()
     (tmp_path / "src/app.py").write_text("print()\n", encoding="utf-8")
     assert detect_scaffold_state(tmp_path, target) is ScaffoldState.REFUSE
@@ -91,7 +91,7 @@ def test_prepare_target_uses_git_and_rest_only(tmp_path: Path) -> None:
     registry = tmp_path / "targets.yaml"
     registry.write_text(
         "targets:\n  - {slug: kb, name: KB, description: d, target_repo: 'https://github.com/o/r',"
-        " type: docs, status: active, engine_version: v0.1.0}\n",
+        " type: docs, status: active}\n",
         encoding="utf-8",
     )
     runner = FakeRunner()

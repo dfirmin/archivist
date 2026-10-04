@@ -25,11 +25,14 @@ def load_target(
     registry_path: Path | None = None,
     runner: CommandRunner | None = None,
     environ: dict[str, str] | None = None,
-) -> LoadTargetResult:
+    validate: bool = True,
+) -> LoadTargetResult | Target:
     if not _publisher_enabled(environ):
         raise WorkspaceError("load-target is restricted to the credentialed publisher container")
     target = resolve_target(target_slug, registry_path)
     workspace = workspace.resolve()
     force_clone(target, workspace, runner or SubprocessRunner())
+    if not validate:
+        return target  # the caller validates, possibly on the target's pinned engine
     run = resolve_run(workspace, expected_slug=target.slug)
     return LoadTargetResult(target, workspace, run)

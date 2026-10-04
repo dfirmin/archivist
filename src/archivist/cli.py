@@ -14,6 +14,7 @@ from archivist.claude_runner import (
 )
 from archivist.config import resolve_auth
 from archivist.engine import resolve_run
+from archivist.engines import enforce_pin, running_version
 from archivist.errors import ArchivistError
 from archivist.load_target import load_target
 from archivist.record_gap import record_gap
@@ -44,9 +45,16 @@ def _print_run(run) -> None:  # type: ignore[no-untyped-def]
         print(f"requires  {kind} ← {', '.join(agents)}")
 
 
+def _on_pinned_engine(workspace: Path, args: argparse.Namespace) -> None:
+    """Hand the command to the target's pinned engine when it is not this one."""
+    decision = enforce_pin(workspace, args.argv, override=args.engine)
+    print(f"engine    {decision.reason}")
+
+
 def _validate(args: argparse.Namespace) -> int:
     pipelines = args.pipeline or [None]
     try:
+        _on_pinned_engine(Path(args.workspace), args)
         for pipeline in pipelines:
             run = resolve_run(Path(args.workspace), pipeline=pipeline)
             _print_run(run)
@@ -57,16 +65,22 @@ def _validate(args: argparse.Namespace) -> int:
 
 
 def _load_target(args: argparse.Namespace) -> int:
+    workspace = Path(args.workspace).resolve()
     try:
-        result = load_target(
+        target = load_target(
             target_slug=args.target,
-            workspace=Path(args.workspace),
+            workspace=workspace,
             registry_path=Path(args.registry) if args.registry else None,
+            validate=False,
         )
+        print(f"workspace {workspace}")
+        # Validate on the target's own engine: hand over to `validate` when the pin differs.
+        args.argv = ["validate", str(workspace)]
+        _on_pinned_engine(workspace, args)
+        run = resolve_run(workspace, expected_slug=target.slug)
     except ArchivistError as err:
         return _fail(err)
-    print(f"workspace {result.workspace}")
-    _print_run(result.run)
+    _print_run(run)
     print("PASS  target loaded")
     return 0
 
@@ -74,6 +88,7 @@ def _load_target(args: argparse.Namespace) -> int:
 def _prepare_workspace(args: argparse.Namespace) -> int:
     workspace = Path(args.workspace).resolve()
     try:
+        _on_pinned_engine(workspace, args)
         prepared = prepare_agent_workspace(workspace, pipeline=args.pipeline)
     except ArchivistError as err:
         return _fail(err)
@@ -109,6 +124,10 @@ def _record_gap(args: argparse.Namespace) -> int:
 
 
 def _run_conductor(args: argparse.Namespace) -> int:
+    try:
+        _on_pinned_engine(Path(args.workspace), args)
+    except ArchivistError as err:
+        return _fail(err)
     return run_conductor_agent(
         workspace=Path(args.workspace),
         inbox_file=args.inbox_file,
@@ -128,6 +147,7 @@ def _prepare_target(args: argparse.Namespace) -> int:
             registry_path=Path(args.registry) if args.registry else None,
             local=args.local,
             publish=not args.no_publish,
+            engine=args.engine,
         )
     except ArchivistError as err:
         return _fail(err)
@@ -144,8 +164,15 @@ def _prepare_target(args: argparse.Namespace) -> int:
     return 0
 
 
+ENGINE_HELP = (
+    "Engine release to run this command on, overriding the target's pin once "
+    "(a tag like v0.1.0, a commit SHA, or 'current' for this engine)"
+)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="archivist", description="Contract-driven document engine")
+    parser.add_argument("--version", action="version", version=f"archivist {running_version()}")
     commands = parser.add_subparsers(dest="command", required=True)
 
     commands.add_parser("config-check", help="Verify Claude Code auth configuration (any CLAUDE_AUTH_MODE)").set_defaults(func=_config_check)
@@ -161,6 +188,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         help="Pipeline to check requirements for (repeatable; default: the target's default)",
     )
+    validate.add_argument("--engine", help=ENGINE_HELP)
     validate.set_defaults(func=_validate)
 
     prepare = commands.add_parser("prepare-target", help="Resolve and scaffold a registered target repository")
@@ -169,17 +197,20 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--registry", help="Override targets.yaml path")
     prepare.add_argument("--local", action="store_true", help="Scaffold a local directory without GitHub")
     prepare.add_argument("--no-publish", action="store_true", help="Clone and scaffold without a commit or PR")
+    prepare.add_argument("--engine", help="Engine release to pin the new target to (default: this engine, if it is a release)")
     prepare.set_defaults(func=_prepare_target)
 
     load = commands.add_parser("load-target", help="Clone a registered target fresh and validate its contracts")
     load.add_argument("workspace", help="Clone destination inside the workspace volume")
     load.add_argument("--target", required=True, help="Slug from targets.yaml")
     load.add_argument("--registry", help="Override targets.yaml path")
+    load.add_argument("--engine", help=ENGINE_HELP)
     load.set_defaults(func=_load_target)
 
     ws = commands.add_parser("prepare-workspace", help="Install agents, skills and the run plan into .claude/")
     ws.add_argument("workspace", help="Target repository root")
     ws.add_argument("--pipeline", help="Pipeline whose agents the conductor may spawn")
+    ws.add_argument("--engine", help=ENGINE_HELP)
     ws.set_defaults(func=_prepare_workspace)
 
     conductor = commands.add_parser("run-conductor", help="Run the conductor over a loaded target (live)")
@@ -190,6 +221,7 @@ def build_parser() -> argparse.ArgumentParser:
     conductor.add_argument("--concept", help="Bundle-relative existing concept: skip authoring")
     conductor.add_argument("--pipeline", help="Pipeline to run (default: the target's, else the engine's)")
     conductor.add_argument("--skip-publish", action="store_true", help="No branch, commit, push, PR or issues")
+    conductor.add_argument("--engine", help=ENGINE_HELP)
     conductor.set_defaults(func=_run_conductor)
 
     gap = commands.add_parser("record-gap", help="Write one kind's okfx_gaps entry on a concept")
@@ -208,7 +240,11 @@ def _smoke_agent(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    raw = list(sys.argv[1:] if argv is None else argv)
+    args = build_parser().parse_args(raw)
+    args.argv = raw
+    if not hasattr(args, "engine"):
+        args.engine = None
     return args.func(args)
 
 

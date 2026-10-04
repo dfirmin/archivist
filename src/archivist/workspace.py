@@ -10,6 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Protocol
 
+from archivist.engines import scaffold_pin
 from archivist.errors import WorkspaceError
 from archivist.targets import Target, resolve_target
 
@@ -131,6 +132,7 @@ def scaffold_workspace(
     target: Target,
     *,
     template_root: Path | None = None,
+    engine: str | None = None,
 ) -> ScaffoldResult:
     """Seed an empty workspace without overwriting existing content."""
     state = detect_scaffold_state(workspace, target)
@@ -141,6 +143,7 @@ def scaffold_workspace(
             f"found: {', '.join(top_level)}"
         )
     root = (template_root or bundle_template_root()).resolve()
+    pin = scaffold_pin(engine)
     written: list[str] = []
     skipped: list[str] = []
     workspace.mkdir(parents=True, exist_ok=True)
@@ -165,7 +168,11 @@ def scaffold_workspace(
             continue
         destination.parent.mkdir(parents=True, exist_ok=True)
         text = source.read_text(encoding="utf-8")
-        text = text.replace("{{slug}}", target.slug).replace("{{name}}", target.name)
+        text = (
+            text.replace("{{slug}}", target.slug)
+            .replace("{{name}}", target.name)
+            .replace("{{engine}}", pin)
+        )
         destination.write_text(text, encoding="utf-8")
         written.append(relative)
 
@@ -351,6 +358,7 @@ def prepare_target(
     publish: bool = True,
     runner: CommandRunner | None = None,
     environ: dict[str, str] | None = None,
+    engine: str | None = None,
 ) -> PrepareResult:
     """Resolve, checkout, scaffold, and optionally publish one registered target."""
     target = resolve_target(target_slug, registry_path)
@@ -358,7 +366,7 @@ def prepare_target(
     command_runner = runner or SubprocessRunner()
 
     if local:
-        scaffold = scaffold_workspace(workspace, target)
+        scaffold = scaffold_workspace(workspace, target, engine=engine)
         return PrepareResult(target, workspace, "local", scaffold)
     if not _publisher_enabled(environ):
         raise WorkspaceError(
@@ -380,7 +388,7 @@ def prepare_target(
         raise WorkspaceError(
             "target repo is non-empty but does not have the expected archivist scaffold"
         )
-    scaffold = scaffold_workspace(workspace, target)
+    scaffold = scaffold_workspace(workspace, target, engine=engine)
     if not publish or not scaffold.written:
         return PrepareResult(target, workspace, action, scaffold)
 

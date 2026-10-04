@@ -10,6 +10,7 @@
 #   CONCEPT_FILE='knowledge/.../overview.md' ./scripts/run-conductor.sh   # existing concept
 #   SKIP_PUBLISH=1 ./scripts/run-conductor.sh                     # no branch/commit/push/PR/issues
 #   PIPELINE=author-verify ./scripts/run-conductor.sh             # only these stages run
+#   ENGINE=v0.2.0 ./scripts/run-conductor.sh                      # try another engine once (pin unchanged)
 #
 # PIPELINE names a pipeline from contracts/target.yaml or agents/profile.yaml (default: the
 # target's default_pipeline, else the engine's). With CONCEPT_FILE the producing stage drops out.
@@ -29,6 +30,7 @@ SKIP_PUBLISH="${SKIP_PUBLISH:-0}"
 INBOX_LIMIT="${INBOX_LIMIT:-0}"
 GROUP_LIMIT="${GROUP_LIMIT:-0}"
 PIPELINE="${PIPELINE:-}"
+ENGINE="${ENGINE:-}"
 
 COMPOSE=(-f docker-compose.yml -f docker-compose.github.yml)
 # Auth mode: the shell wins, then .env, then the default (gateway-key).
@@ -61,6 +63,9 @@ if [[ -n "${CONCEPT_FILE}" ]]; then
 fi
 if [[ -n "${PIPELINE}" ]]; then
   ARGS+=(--pipeline "$PIPELINE")
+fi
+if [[ -n "${ENGINE}" ]]; then
+  ARGS+=(--engine "$ENGINE")
 fi
 if [[ "$SKIP_PUBLISH" == "1" ]]; then
   ARGS+=(--skip-publish)

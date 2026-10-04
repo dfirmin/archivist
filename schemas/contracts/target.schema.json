@@ -4,11 +4,16 @@
   "title": "Target contract index (contracts/target.yaml)",
   "description": "The one file a target must ship. Names the target, the pipelines it runs from engine agents, and where each contract lives. Paths are relative to contracts/.",
   "type": "object",
-  "required": ["version", "slug"],
+  "required": ["version", "slug", "engine"],
   "additionalProperties": false,
   "properties": {
     "version": { "const": 1 },
     "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "engine": {
+      "type": "string",
+      "pattern": "^(v\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z.]+)?|[0-9a-f]{40})$",
+      "description": "The engine release this target runs on: a tag (v0.1.0) or a full commit SHA. Changed by pull request to upgrade."
+    },
     "name": { "type": "string", "minLength": 1 },
     "description": { "type": "string" },
     "default_pipeline": { "$ref": "#/$defs/name" },

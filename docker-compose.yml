@@ -17,6 +17,8 @@ services:
     environment:
       DOCKER_CONTAINER: "1"
       CHILD_SESSION_TRANSCRIPT_DIR: "/out/transcripts"
+      # Pinned engine releases are installed here once and reused across runs.
+      ARCHIVIST_ENGINE_CACHE: "/out/engines"
     volumes:
       # Target clones and agent cwd — visible on the host (./out on the host).
       - "./out/workspace:/workspace"

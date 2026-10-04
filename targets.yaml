@@ -1,5 +1,6 @@
 # Engine target registry: one entry per onboarded knowledge repo.
-# Everything about what a target contains lives in that repo's contracts/.
+# Everything about what a target contains — including the engine release it runs on
+# (`engine:` in contracts/target.yaml) — lives in that repo's contracts/.
 targets:
   - slug: sample
     name: Sample Data Warehouse
@@ -7,7 +8,6 @@ targets:
     target_repo: https://github.com/example-org/sample-knowledge
     type: warehouse
     status: active
-    engine_version: v0.1.0
     auto_trigger: false
 
   - slug: policy-notes
@@ -16,7 +16,6 @@ targets:
     target_repo: https://github.com/example-org/policy-notes
     type: docs
     status: active
-    engine_version: v0.1.0
     auto_trigger: false
 
   - slug: archivist-knowledge-01
@@ -25,5 +24,4 @@ targets:
     target_repo: https://github.com/dfirmin/archivist-knowledge-01
     type: test
     status: active
-    engine_version: v0.1.0
     auto_trigger: false

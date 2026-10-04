@@ -52,6 +52,11 @@ applicable kind on one concept, spawned in parallel.
 **Engine**:
 This repo: agents, skills, profile, schemas, Python.
 
+**Engine pin**:
+`engine:` in a target's contract index: the engine release (tag or commit SHA) that target
+runs on. A different engine hands the run to the pinned release. Changed only by pull request.
+_Avoid_: engine_version (the old, unused registry field)
+
 **Profile**:
 `agents/profile.yaml`: coordinator, planner, each agent's `requires`/`optional` contracts and
 `dispatch` rules, engine pipelines, enrichment methods.
