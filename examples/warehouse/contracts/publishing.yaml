@@ -1,0 +1,6 @@
+version: 1
+issues:
+  title: "{okfx_subject_area}: {title} — {kind}"
+  labels: [tags, priority, okfx_physical_views, origin, kind]
+  summary_fields: [okfx_subject_area, okfx_physical_views, okfx_code_repo]
+  routing_field: okfx_product_owner

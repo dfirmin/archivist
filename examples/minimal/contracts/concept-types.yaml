@@ -1,0 +1,13 @@
+version: 1
+concept_types:
+  policy-summary:
+    type: Policy Summary
+    description: A plain-language summary of one internal policy document.
+    authored: true
+    structures: [policy-summary]
+    path: "knowledge/policies/{title}.md"
+    tags: [policy]
+    fields:
+      okfx_policy_owner:
+        description: The team that owns the policy, as the document states it.
+        from: the document body

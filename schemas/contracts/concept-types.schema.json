@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archivist/contracts/concept-types.schema.json",
+  "title": "Concept types",
+  "description": "Every OKF concept type the target allows: its OKF type string, where it lives, which structure shapes it, and the okfx_ fields it carries.",
+  "type": "object",
+  "required": ["version", "concept_types"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "concept_types": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+      "additionalProperties": { "$ref": "#/$defs/concept_type" }
+    },
+    "guidance": { "type": "string" }
+  },
+  "$defs": {
+    "concept_type": {
+      "type": "object",
+      "required": ["type", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "minLength": 1, "description": "The exact OKF `type` value." },
+        "description": { "type": "string", "minLength": 1 },
+        "authored": {
+          "type": "boolean",
+          "description": "The author may create concepts of this type from inbox documents. Default false."
+        },
+        "structures": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Structure ids this type may use. One entry: always that structure."
+        },
+        "structure_rule": {
+          "type": "string",
+          "description": "How to choose among several structures (agents apply this)."
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^knowledge/.+\\.md$",
+          "description": "Path pattern under knowledge/. {placeholders} name frontmatter fields or values the guidance defines."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "OKF tags, in order. {placeholders} are resolved by the author."
+        },
+        "fields": {
+          "type": "object",
+          "description": "Frontmatter fields beyond OKF's own. Names must start with okfx_.",
+          "additionalProperties": { "$ref": "#/$defs/field" }
+        },
+        "companions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/companion" }
+        },
+        "guidance": { "type": "string" }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": ["description"],
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "from": { "type": "string", "description": "Where the value comes from (a reference name, a source, a rule)." },
+        "shape": { "enum": ["string", "list", "string-or-list", "number", "boolean", "mapping"] }
+      }
+    },
+    "companion": {
+      "type": "object",
+      "required": ["concept_type", "for_each", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "concept_type": { "type": "string", "minLength": 1 },
+        "for_each": { "type": "string", "description": "A list field on the parent; one companion per item." },
+        "path": { "type": "string", "minLength": 1, "description": "Relative to the parent's directory." },
+        "guidance": { "type": "string" }
+      }
+    }
+  }
+}

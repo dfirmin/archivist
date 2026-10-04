@@ -1,0 +1,20 @@
+# Engine target registry: one entry per onboarded knowledge repo.
+# Everything about what a target contains lives in that repo's contracts/.
+targets:
+  - slug: sample
+    name: Sample Data Warehouse
+    description: Sample warehouse business-view knowledge (see examples/warehouse for its contracts)
+    target_repo: https://github.com/example-org/sample-knowledge
+    type: warehouse
+    status: active
+    engine_version: v0.1.0
+    auto_trigger: false
+
+  - slug: policy-notes
+    name: Policy Notes
+    description: Plain-language policy summaries (see examples/minimal for its contracts)
+    target_repo: https://github.com/example-org/policy-notes
+    type: docs
+    status: active
+    engine_version: v0.1.0
+    auto_trigger: false

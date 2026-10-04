@@ -1,0 +1,61 @@
+# Contract index for a sample data-warehouse knowledge target.
+# Every path is relative to contracts/. Declare only what the pipelines use.
+version: 1
+slug: sample
+name: Sample Data Warehouse
+description: Business-view knowledge for a sample warehouse, authored from catalog documents.
+
+default_pipeline: full
+pipelines:
+  # Engine agents only, in order. This replaces the engine's `full` with the same stages,
+  # listed here so the target's run is explicit.
+  full: [author, enricher, verifier, gap-agent, scorer]
+  # A cheaper pass for new subject areas whose code repos are not registered yet.
+  no-code: [author, verifier, gap-agent, scorer]
+
+contracts:
+  concept-types: concept-types.yaml
+  structures: structures/
+  intake: intake.yaml
+  gap-kinds: gap-kinds.yaml
+  scoring: scoring.yaml
+  catalog: catalog.yaml
+  publishing: publishing.yaml
+
+reference:
+  inventory:
+    path: reference/inventory.csv
+    columns: [entity, subject_area, source_repo]
+    description: Physical views and tables mapped to a subject area and the repo whose code builds them.
+    guidance: |
+      Look an entity up by exact name, case-insensitive: `grep -i "^<ENTITY>," contracts/reference/inventory.csv`.
+      - No row: the entity is out of scope.
+      - subject_area is UNKNOWN: out of scope until an owner assigns it; say "unresolved subject area".
+      - Otherwise subject_area is an owners slug and source_repo (possibly empty) is the code repo.
+  owners:
+    path: reference/owners.yaml
+    schema: schemas/owners.schema.json
+    description: Subject areas with their archetype and product owners, plus the fallback owner list.
+    guidance: |
+      A subject-area slug is valid only when it appears under subject_areas. Its entry gives the
+      archetype (which structure a subject-area overview uses, and the first tag of every concept in
+      it) and product_owners; the owner of record is the first email. A missing, UNKNOWN or
+      undeclared subject area routes to unknown.product_owners. Never invent an email.
+  glossary:
+    path: reference/glossary.yaml
+    description: Business-term expansions (terms -> definition).
+    guidance: |
+      For business terms only. A physical identifier token (a view name, a SNAKE_CASE identifier,
+      or an underscore-delimited segment of one, like CASE in CASE_EVENT_KEY) resolves in
+      naming-standards first and never falls back to a glossary homonym. Copy the full value.
+  naming-standards:
+    path: reference/naming-standards.yaml
+    description: Abbreviation -> phrase for tokens used in physical object names.
+    guidance: |
+      Lookup order for a physical identifier token: naming-standards, then a cited source that
+      explicitly expands it, else undefined. For a business term: glossary, then naming-standards,
+      then a cited source, else undefined. A bare acronym in a source is not a definition.
+  source-systems:
+    path: reference/source-systems.yaml
+    description: Registered source systems per subject-area slug.
+    guidance: The Data Sources & Ingestion Route section names at least one system registered for the concept's subject area.

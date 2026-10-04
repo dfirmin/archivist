@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archivist/contracts/catalog.schema.json",
+  "title": "Catalog",
+  "description": "How the bundle-root index.md groups concepts and what log.md bullets say. Optional: without it the index groups by concept type.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "description": "The generated block's # heading. Default: Concepts." },
+        "group_by": { "type": "string", "minLength": 1, "description": "Frontmatter field whose value names each ## group." },
+        "group_heading": { "type": "string", "description": "How a group value becomes a heading." },
+        "include": { "type": "array", "items": { "type": "string" }, "description": "Concept type ids listed. Default: authored types." },
+        "suffix_field": { "type": "string", "description": "Numeric frontmatter field folded onto each line." }
+      }
+    },
+    "log": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "guidance": { "type": "string" } }
+    },
+    "guidance": { "type": "string" }
+  }
+}

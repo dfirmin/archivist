@@ -1,0 +1,29 @@
+id: data-view-group
+description: A business-view group overview in a data subject area.
+sections:
+  - Overview
+  - Source
+  - heading: Data Sources & Ingestion Route
+    description: Where the data comes from; names at least one registered source system.
+  - Data Granularity
+  - heading: Business Rules & Usage Notes
+    subsections:
+      - heading: Implementation Logic
+        required: false
+        subsections:
+          - heading: Code-Extracted Logic
+            owner: enricher
+            enrich:
+              method: code-logic
+              input_field: okfx_physical_views
+              lookup: inventory
+              fallback_field: okfx_code_repo
+              guidance: Repos are the distinct inventory source_repo of every view; when inventory has none, use okfx_code_repo.
+  - Other Key Concepts
+  - Attribute Information
+  - Code Set Information
+  - Known Issues
+  - FAQ
+  - heading: Glossary
+    owner: placeholder
+    placeholder: "*[Placeholder. Terms are reconciled against the registries in a later phase.]*"

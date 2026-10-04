@@ -1,0 +1,35 @@
+version: 1
+concept_type: business-view-group-overview
+scope: |
+  A document is in scope when the physical view its title names has an inventory row whose
+  subject_area is an owners slug. No row, or UNKNOWN, leaves it in the inbox.
+grouping: |
+  Documents describing one business view are one group: the same physical view, a view and its
+  _INCRMTL_ sibling, or documents linked by catalog_parent_document_id.
+ordering: The essential-information document first, then the rest by file name.
+naming: The business name from the title or body, as a concrete folder string (e.g. Customer Case).
+classes:
+  - id: essential-info
+    description: The primary document for a view — purpose, grain, sources, rules.
+    mode: create
+    sections: all
+  - id: attribute-notes
+    description: Column- or attribute-level notes.
+    mode: partial
+    sections: [Attribute Information]
+  - id: header-vs-detail
+    description: How header and detail records relate.
+    mode: partial
+    sections: [Attribute Information]
+  - id: codeset
+    description: Code values and their meanings.
+    mode: partial
+    sections: [Code Set Information]
+  - id: combined
+    description: Both attribute notes and code sets.
+    mode: partial
+    sections: [Attribute Information, Code Set Information]
+  - id: other-supplementary
+    description: Anything else about a registered view.
+    mode: partial
+    sections: best-fit

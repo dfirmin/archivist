@@ -1,0 +1,58 @@
+version: 1
+concept_types:
+  business-view-group-overview:
+    type: Business View Group Overview
+    description: Business context shared by a named group of physical views.
+    authored: true
+    structures: [data-view-group]
+    path: "knowledge/subject-areas/{okfx_subject_area}/business-views/{title}/overview.md"
+    tags: ["{archetype}", "{okfx_subject_area}", business-view-group-overview]
+    fields:
+      okfx_subject_area:
+        description: The subject-area slug.
+        required: true
+        shape: string
+        from: inventory subject_area of the document's views; must be an owners slug
+      okfx_physical_views:
+        description: Every physical view the group documents, as named in the source.
+        required: true
+        shape: list
+        from: the document title and body (`CUSTCASE (Customer Case) - Financial Fields` names CUSTCASE), each confirmed in inventory
+      okfx_code_repo:
+        description: Repo(s) whose code builds the views.
+        shape: string-or-list
+        from: |
+          The non-empty inventory source_repo values of every view: all identical → that URL;
+          two or more distinct → a sorted list of the unique URLs; all empty → null.
+      okfx_product_owner:
+        description: Owner of record.
+        required: true
+        shape: string
+        from: owners — the first product_owners email of the subject area
+    companions:
+      - concept_type: physical-view
+        for_each: okfx_physical_views
+        path: "{item_lower}.md"
+        guidance: Frontmatter only (type, title, status, tags [view]); the body after the closing --- is empty.
+    guidance: |
+      {archetype} in tags is the subject area's archetype from owners. The title is the business
+      name, a concrete folder string such as "Customer Case".
+
+  subject-area-overview:
+    type: Subject Area Overview
+    description: Business context spanning one subject area.
+    structures: [data-subject-area, process-subject-area]
+    structure_rule: Use the structure named for the subject area's archetype in owners (data → data-subject-area, process → process-subject-area).
+    path: "knowledge/subject-areas/{okfx_subject_area}/overview.md"
+    fields:
+      okfx_subject_area:
+        description: The subject-area slug.
+        required: true
+
+  physical-view:
+    type: View
+    description: A physical view represented by a catalog concept.
+
+  reference:
+    type: Reference
+    description: Supporting documentation about the knowledge bundle.

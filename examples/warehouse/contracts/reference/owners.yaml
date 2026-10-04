@@ -1,0 +1,10 @@
+# Fictional example. Subject areas, their archetype, and owners.
+subject_areas:
+  - slug: customer-care
+    archetype: data
+    product_owners: [customer-care@example.com]
+  - slug: case-handling-process
+    archetype: process
+    product_owners: [process-owners@example.com]
+unknown:
+  product_owners: [catalog-admin@example.com]

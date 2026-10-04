@@ -1,0 +1,11 @@
+# The smallest useful target: author and verify policy summaries. No intake rules (every
+# inbox document is its own concept), no gaps, no scoring, no reference data.
+version: 1
+slug: policy-notes
+name: Policy Notes
+default_pipeline: summarize
+pipelines:
+  summarize: [author, verifier]
+contracts:
+  concept-types: concept-types.yaml
+  structures: structures/

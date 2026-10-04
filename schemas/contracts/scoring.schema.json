@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archivist/contracts/scoring.schema.json",
+  "title": "Scoring",
+  "description": "How the scorer turns a concept's okfx_gaps into okfx_confidence.",
+  "type": "object",
+  "required": ["version", "scale", "bands"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "applies_to": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Concept type ids to score. Default: every type a gap kind applies to."
+    },
+    "scale": {
+      "type": "object",
+      "required": ["min", "max"],
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 4 }
+      }
+    },
+    "no_gaps": { "type": "number", "description": "Score when okfx_gaps is empty. Default: scale.max." },
+    "bands": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["min", "max", "meaning"],
+        "additionalProperties": false,
+        "properties": {
+          "min": { "type": "number" },
+          "max": { "type": "number" },
+          "meaning": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "priority_weight": {
+      "type": "object",
+      "description": "Gap priority -> how heavily it counts, in words or numbers.",
+      "additionalProperties": { "type": ["string", "number"] }
+    },
+    "guidance": { "type": "string" }
+  }
+}

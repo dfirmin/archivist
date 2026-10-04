@@ -1,0 +1,11 @@
+# Opt-in GitHub login for the worker. Used by run-conductor.sh and publisher-run.sh.
+# Offline tests / docker-run.sh stay on docker-compose.yml alone (no gh mount).
+#
+# publisher-run.sh also sets ARCHIVIST_PUBLISHER=1 so load-target /
+# remote prepare-target are allowed; the conductor does not set that flag.
+services:
+  worker:
+    environment:
+      GH_CONFIG_DIR: "/home/appuser/.config/gh"
+    volumes:
+      - "${HOME}/.config/gh:/home/appuser/.config/gh:rw"

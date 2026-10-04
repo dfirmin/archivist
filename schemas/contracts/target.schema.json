@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archivist/contracts/target.schema.json",
+  "title": "Target contract index (contracts/target.yaml)",
+  "description": "The one file a target must ship. Names the target, the pipelines it runs from engine agents, and where each contract lives. Paths are relative to contracts/.",
+  "type": "object",
+  "required": ["version", "slug"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "default_pipeline": { "$ref": "#/$defs/name" },
+    "pipelines": {
+      "type": "object",
+      "description": "Pipeline name -> ordered engine agent names. Replaces an engine pipeline of the same name.",
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": { "$ref": "#/$defs/name" }
+      }
+    },
+    "contracts": {
+      "type": "object",
+      "description": "Built-in contract kind -> path. Declare only what the pipelines use.",
+      "additionalProperties": false,
+      "properties": {
+        "concept-types": { "$ref": "#/$defs/file" },
+        "structures": { "$ref": "#/$defs/dir" },
+        "intake": { "$ref": "#/$defs/file" },
+        "gap-kinds": { "$ref": "#/$defs/file" },
+        "scoring": { "$ref": "#/$defs/file" },
+        "catalog": { "$ref": "#/$defs/file" },
+        "publishing": { "$ref": "#/$defs/file" }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "description": "Target-defined reference data agents load through the target-contracts skill.",
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": { "$ref": "#/$defs/reference" }
+    },
+    "guidance": { "type": "string" }
+  },
+  "$defs": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+    "file": { "type": "string", "pattern": "^[^/][^\\\\]*\\.(ya?ml)$" },
+    "dir": { "type": "string", "pattern": "^[^/][^\\\\]*/?$" },
+    "reference": {
+      "type": "object",
+      "required": ["path", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "pattern": "^[^/][^\\\\]*\\.(ya?ml|json|csv|md|txt)$" },
+        "description": { "type": "string", "minLength": 1 },
+        "guidance": { "type": "string" },
+        "schema": {
+          "type": "string",
+          "pattern": "^[^/][^\\\\]*\\.json$",
+          "description": "JSON Schema (inside contracts/) the YAML/JSON file must satisfy."
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "CSV only: the exact header row."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archivist/contracts/publishing.schema.json",
+  "title": "Publishing",
+  "description": "How gap issues are titled, labelled and routed. Optional: without it the title is `{title} — {kind}`.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "issues": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Default true." },
+        "title": { "type": "string", "minLength": 1, "description": "Template over frontmatter fields plus {kind}; must contain {kind}." },
+        "labels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "In order: frontmatter field names, or priority, origin, kind."
+        },
+        "summary_fields": { "type": "array", "items": { "type": "string" }, "description": "Frontmatter fields shown in the issue's Concept section." },
+        "routing_field": { "type": "string", "description": "Frontmatter field that names the owner." }
+      }
+    },
+    "guidance": { "type": "string" }
+  }
+}

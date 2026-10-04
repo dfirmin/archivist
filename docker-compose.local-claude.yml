@@ -1,0 +1,21 @@
+# Opt-in override for CLAUDE_AUTH_MODE=local-claude (LOCAL DEV ONLY).
+#
+# Runs the agents through YOUR individual Claude Code access instead of the shared
+# borrowed LiteLLM key: it bind-mounts your host ~/.claude-code-auth (the enterprise
+# SSO apiKeyHelper + node deps + DPoP key) into the container and tells the engine
+# to defer auth to it. Not used in CI or the hosted image — this file mounts a host
+# path and must never be baked into a deployed image.
+#
+# Usage (docker-run.sh auto-includes this file when the mode is set):
+#   CLAUDE_AUTH_MODE=local-claude ./scripts/docker-run.sh smoke-agent
+services:
+  worker:
+    environment:
+      CLAUDE_AUTH_MODE: "local-claude"
+      # Gateway URL that the SSO token authenticates against (matches the
+      # host Claude Code install's ANTHROPIC_BASE_URL). Overrides the base test URL.
+      ANTHROPIC_BASE_URL: "https://litellm.example.com"
+    volumes:
+      # Host apiKeyHelper toolchain -> container HOME. Read-write so it can refresh
+      # its cached SSO token. No GitHub credentials enter the agent container.
+      - "${HOME}/.claude-code-auth:/home/appuser/.claude-code-auth:rw"

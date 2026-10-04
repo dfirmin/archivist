@@ -1,0 +1,13 @@
+id: process-subject-area
+description: Overview of a process or framework subject area without business views.
+sections:
+  - Overview
+  - Framework
+  - Components
+  - Roles
+  - Related Subject Areas
+  - Known Issues
+  - FAQ
+  - heading: Glossary
+    owner: placeholder
+    placeholder: "*[Placeholder. Terms are reconciled against the registries in a later phase.]*"

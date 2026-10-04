@@ -1,0 +1,98 @@
+# Engine profile: the team, what each agent needs from a target, and how the conductor
+# dispatches it. Engine-owned. A target picks or defines pipelines from these agents in
+# contracts/target.yaml; it never adds an agent.
+#
+# Python reads this file for three things only:
+#   - roster: the conductor's Agent(...) allowlist for the chosen pipeline;
+#   - requires: which contracts the chosen pipeline needs (missing = the run refuses);
+#   - dispatch: copied verbatim into the run plan the conductor follows.
+# The conductor, not Python, carries out the dispatch rules.
+version: 1
+coordinator: conductor
+planner: intake-planner
+default_pipeline: full
+
+agents:
+  intake-planner:
+    optional: [intake, reference]
+
+  author:
+    produces: true            # creates concepts from inbox documents; the entry stage of an inbox run
+    requires: [concept-types, structures]
+    optional: [intake, reference]
+    dispatch:
+      per: group
+      description: "author-{group}"
+      prompt: |
+        Author these inbox documents, in this order:
+        {documents}
+      done_when: >-
+        A concept exists for the group and each in-scope document has left the inbox for
+        references/processed/documents/. Record each concept path the author reports.
+      on_empty: >-
+        The author returned without writing a concept while the documents are still in the
+        inbox: retry once with description "author-{group}-retry" and this line in front of the
+        same prompt: "The previous session stopped before writing. Write the concept now and
+        move each in-scope document to references/processed/documents/." A second empty return
+        fails the group.
+      on_failure: fail-group
+
+  enricher:
+    requires: [concept-types, structures]
+    optional: [reference]
+    dispatch:
+      per: concept
+      description: "enrich-{concept}"
+      prompt: "Enrich {concept_path}."
+      done_when: "The result starts with `Enriched: yes` or `Enriched: no — <reason>`."
+      on_failure: continue
+
+  verifier:
+    dispatch:
+      per: concept
+      description: "verify-{concept}"
+      prompt: "Verify {concept_path} against its cited sources."
+      done_when: The result reports how many losses were restored.
+      on_failure: stop-concept
+
+  gap-agent:
+    requires: [gap-kinds, concept-types]
+    optional: [reference]
+    dispatch:
+      per: gap-kind
+      parallel: true
+      before: >-
+        Read the gap-kinds contract. The fleet is every kind with `enabled` not false whose
+        `applies_to` holds this concept's type id (concept-types maps the concept's `type` to its
+        id). Set `okfx_gaps: []` on the concept, then spawn the whole fleet in one message.
+      description: "gap-{kind}-{concept}"
+      prompt: "Judge only kind {kind} on {concept_path}."
+      done_when: Every kind returned present true or false.
+      on_failure: >-
+        Retry the failed kinds once, together, with a "-retry" description. A kind that still
+        fails stops the concept: record `<concept> → gap-agent <kind> → <error>`.
+
+  scorer:
+    requires: [scoring, gap-kinds]
+    dispatch:
+      per: concept
+      description: "score-{concept}"
+      prompt: "Score {concept_path}."
+      done_when: The result reports a score.
+      on_failure: continue
+
+# Engine pipelines. A target pipeline of the same name replaces one of these.
+pipelines:
+  full: [author, enricher, verifier, gap-agent, scorer]
+  author-verify: [author, verifier]
+  enrich: [enricher]
+  gaps: [gap-agent, scorer]
+
+# Enrichment methods a structure section may name in `enrich.method`. The enricher loads
+# the listed skills; the contract says where the result goes.
+enrichment_methods:
+  code-logic:
+    description: >-
+      Read the SQL/ETL code behind the concept's entities and record filters, joins, derived
+      fields and source-system divergences, each row citing a file at a commit.
+    skills: [source-code-locator, implementation-logic]

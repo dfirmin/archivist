@@ -1,0 +1,7 @@
+# Contract index — the one file every archivist target ships.
+# Declare only the contracts your pipelines use; `archivist validate .` says what is missing.
+# Copy shapes from the engine's examples/ (examples/warehouse is a full business-view setup).
+version: 1
+slug: {{slug}}
+name: {{name}}
+contracts: {}

@@ -1,0 +1,6 @@
+# Fictional example. entity is a view or table; subject_area must be an owners slug.
+entity,subject_area,source_repo
+CUSTCASE,customer-care,https://github.com/example-org/sample-case-etl
+CUSTCASE_INCRMTL_SV,customer-care,https://github.com/example-org/sample-case-etl
+CUSTOMER_CONTACT_VIEW,customer-care,
+LEGACY_FEED,UNKNOWN,

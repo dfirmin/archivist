@@ -1,0 +1,11 @@
+id: policy-summary
+description: What a policy requires, of whom, and when.
+sections:
+  - Purpose
+  - Who It Applies To
+  - Requirements
+  - heading: Exceptions
+    required: false
+  - heading: Open Questions
+    owner: placeholder
+    placeholder: "*[Questions for the policy owner are collected here during review.]*"

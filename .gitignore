@@ -1,0 +1,23 @@
+# Secrets — never commit. Document variables in .env.example instead.
+.env
+.env.*
+!.env.example
+
+# Generated per run by `prepare-workspace` inside a target: skills, agents and the run plan.
+.claude/skills/
+.claude/agents/
+.claude/archivist/
+
+# Docker bind mount: target repo clones (see docker-compose.yml)
+out/
+
+# Throwaway workspaces for local end-to-end runs (clones + logs)
+.e2e-workspace/
+.live-e2e-ws/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.DS_Store

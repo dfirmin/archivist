@@ -1,0 +1,5 @@
+# Fictional example. Keys are owners slugs.
+subject_areas:
+  customer-care:
+    - name: Sample CRM
+      description: Authoritative source for customer contacts and cases

@@ -1,0 +1,11 @@
+id: data-subject-area
+description: Overview of a subject area that holds business views and tables.
+sections:
+  - Overview
+  - Source Systems
+  - Related Subject Areas
+  - Known Issues
+  - FAQ
+  - heading: Glossary
+    owner: placeholder
+    placeholder: "*[Placeholder. Terms are reconciled against the registries in a later phase.]*"

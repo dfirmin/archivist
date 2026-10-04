@@ -1,0 +1,38 @@
+version: 1
+kinds:
+  - id: missing_section
+    applies_to: [business-view-group-overview, subject-area-overview]
+    definition: A required section has no substantive content.
+    origins: [author, documentation]
+    context: [the concept body, the cited sources]
+    detection:
+      - A required heading from the structure is absent, or holds only a stub or placeholder
+      - Placeholder-owned sections (Glossary) count only when the structure marks them required and no later role is named
+    priority: medium
+  - id: undefined_acronym
+    applies_to: [business-view-group-overview]
+    definition: An acronym or abbreviation is used without a definition.
+    origins: [author, documentation]
+    context: [the concept body, the cited sources, the glossary and naming-standards registries]
+    uses: [glossary, naming-standards]
+    detection:
+      - The body uses an acronym that no registry and no cited source expands
+      - A registry or cited source expands it but the concept leaves it unexpanded (origin author)
+    priority: low
+  - id: missing_code_value_semantics
+    applies_to: [business-view-group-overview]
+    definition: Code values are listed without their business meaning.
+    origins: [author, documentation]
+    context: [Code Set Information, Code-Extracted Logic, the cited sources]
+    detection:
+      - A code column's values appear without what each value means
+    priority: medium
+  - id: unregistered_source_system
+    applies_to: [business-view-group-overview]
+    definition: Data Sources & Ingestion Route names no registered source system.
+    origins: [author, documentation]
+    context: [Data Sources & Ingestion Route, the source-systems registry]
+    uses: [source-systems]
+    detection:
+      - None of the systems registered for the concept's subject area is named
+    priority: high
