@@ -243,8 +243,10 @@ engine: v0.2.0          # a release tag, or a full commit SHA
 - **Adopt** an upgrade by changing `engine:` in the target repo through a pull request.
 
 Releasing the engine: set `version` in `pyproject.toml` and `src/archivist/__init__.py` to the
-release, tag `vX.Y.Z` on that commit, then move `main` to the next `.devN` version. A test keeps
-the two version strings equal.
+release (for example `0.3.0`) and push that commit to `main`. The `release-tag` GitHub Actions
+workflow runs the offline tests and tags the commit `v0.3.0`; development versions (`.devN`) are
+never tagged, and an existing tag is never moved. Then move `main` to the next `.devN` version.
+A test keeps the two version strings equal.
 
 ## Configuration
 
