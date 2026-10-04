@@ -40,6 +40,11 @@ _LEGACY_PATHS = (  # longest first
     ("references/inbox/", "sources/inbox/"),
     ("references/processed/", "sources/processed/"),
     ("`references/`", "`sources/`"),
+    # Whole lines the references-era bundle template wrote (README tree, index section).
+    ("└── references/       # Source documents concepts cite",
+     "└── sources/          # Source documents: inbox/ (waiting) and processed/ (cited)"),
+    ("## References\n\n- Raw inputs: `sources/inbox/`\n- Consumed inputs: `sources/processed/`",
+     "## Sources\n\n- Waiting to be authored: `sources/inbox/`\n- Authored and cited: `sources/processed/`"),
 )
 # What makes a repo an archivist target (scaffold detection). Starter contracts and examples
 # are seeded too, but a target may replace or delete them.
@@ -454,7 +459,14 @@ def _publish_scaffold(
     workspace: Path,
     target: Target,
     runner: CommandRunner,
-) -> tuple[str, str]:
+    *,
+    open_pr: str | None = None,
+) -> tuple[str, str, bool]:
+    """Commit the scaffold on the onboarding branch and push it; open a PR unless one is open.
+
+    With an open onboarding PR the branch is refreshed (the PR follows it) only when the
+    content differs from what the PR already holds. Returns (sha, PR URL, pushed).
+    """
     _prepare_base_branch(workspace, runner)
     _run(runner, ["git", "checkout", "-B", ONBOARDING_BRANCH, _BASE_BRANCH], cwd=workspace)
     _run(runner, ["git", "config", "user.name", ENGINE_GIT_NAME], cwd=workspace)
@@ -469,6 +481,12 @@ def _publish_scaffold(
         ["git", "commit", "-m", f"chore({target.slug}): seed archivist scaffold"],
         cwd=workspace,
     )
+    if open_pr:
+        same = _run(runner, ["git", "diff", "--quiet", f"origin/{ONBOARDING_BRANCH}", "HEAD"],
+                    cwd=workspace, allow_failure=True)
+        if same.returncode == 0:
+            sha = _run(runner, ["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
+            return sha, open_pr, False
     _run(
         runner,
         # --force: the branch is engine-owned; a leftover from a merged onboarding is replaced.
@@ -476,6 +494,8 @@ def _publish_scaffold(
         cwd=workspace,
     )
     sha = _run(runner, ["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
+    if open_pr:
+        return sha, open_pr, True
     created = _gh_api(
         runner,
         f"repos/{target.github_slug}/pulls",
@@ -489,7 +509,7 @@ def _publish_scaffold(
         method="POST",
         jq=".html_url",
     )
-    return sha, created.stdout.strip()
+    return sha, created.stdout.strip(), True
 
 
 def prepare_target(
@@ -518,14 +538,6 @@ def prepare_target(
 
     action = _ensure_checkout(target, workspace, command_runner)
     open_pr = _open_onboarding_pr(target, command_runner)
-    if open_pr:
-        return PrepareResult(
-            target,
-            workspace,
-            "onboarding-pr-open",
-            ScaffoldResult(ScaffoldState.SCAFFOLDED),
-            pull_request_url=open_pr,
-        )
 
     _prepare_base_branch(workspace, command_runner)
     state = detect_scaffold_state(workspace, target)
@@ -535,7 +547,10 @@ def prepare_target(
         )
     scaffold = scaffold_workspace(workspace, target, engine=engine)
     if not publish or not scaffold.written:
-        return PrepareResult(target, workspace, action, scaffold)
+        return PrepareResult(target, workspace, action, scaffold, pull_request_url=open_pr)
 
-    sha, pr_url = _publish_scaffold(workspace, target, command_runner)
+    sha, pr_url, changed = _publish_scaffold(workspace, target, command_runner, open_pr=open_pr)
+    if open_pr:
+        return PrepareResult(target, workspace, "onboarding-pr-updated" if changed else "onboarding-pr-open",
+                             scaffold, sha, pr_url)
     return PrepareResult(target, workspace, "published", scaffold, sha, pr_url)

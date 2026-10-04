@@ -145,9 +145,16 @@ def test_scaffold_migrates_the_references_layout(tmp_path: Path) -> None:
     concept.parent.mkdir(parents=True)
     concept.write_text("---\nsources:\n  - {resource: references/processed/documents/a.md}\n---\n"
                        "*Source: [a](references/processed/documents/a.md)*\n", encoding="utf-8")
+    (workspace / "README.md").write_text("└── references/       # Source documents concepts cite\n", encoding="utf-8")
+    (workspace / "index.md").write_text(
+        "## References\n\n- Raw inputs: `references/inbox/`\n- Consumed inputs: `references/processed/`\n",
+        encoding="utf-8",
+    )
     assert detect_scaffold_state(workspace, TARGET) is ScaffoldState.SCAFFOLDED
 
     result = scaffold_workspace(workspace, TARGET, engine="v0.2.0")
+    assert "references" not in (workspace / "README.md").read_text(encoding="utf-8")
+    assert (workspace / "index.md").read_text(encoding="utf-8").startswith("## Sources\n")
     assert not (workspace / "references").exists()
     assert (workspace / "sources/processed/a.md").read_text(encoding="utf-8") == "source\n"
     assert (workspace / "sources/inbox/b.md").is_file()
