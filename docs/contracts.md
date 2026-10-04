@@ -133,6 +133,18 @@ fields:
 The engine owns three `okfx_` fields: `okfx_structure` (author), `okfx_gaps` (gap-agents) and
 `okfx_confidence` (scorer). Targets cannot declare them.
 
+## Reference data and gap origin
+
+Reference data (`reference:` in `target.yaml`) fills frontmatter fields and decides scope. It
+never becomes body text: the author restates only the cited source documents, and missing
+information becomes a gap rather than being filled from a registry.
+
+Gap origin follows the same line. `author` means a cited source states the missing information
+and the concept dropped it; the gap-agent quotes that passage in the gap description. Anything
+else, including a value only a reference contract holds, is `documentation`: an owner has to
+put it in a source. Keep `detection` rules about whether a gap is present; a rule that ties
+`author` to reference data contradicts the author's grounding and makes origins unstable.
+
 ## Where to look next
 
 [`examples/README`](../bundle-template/examples-README.md) maps each feature to the example

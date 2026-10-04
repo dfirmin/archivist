@@ -1,7 +1,7 @@
 ---
 name: scorer
 description: >
-  Score `okfx_confidence` for one concept from its `okfx_gaps`, applying the target's
+  Scores `okfx_confidence` for one concept from its `okfx_gaps`, applying the target's
   scoring contract. Writes only that field. Use when the conductor asks to score a concept.
 model: claude-haiku-4-5-20251001
 skills:

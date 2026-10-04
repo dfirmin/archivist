@@ -1,10 +1,11 @@
 ---
 name: verifier
 description: >
-  Verify one concept against the sources it cites: restore any source content the concept
-  lost into its body, then append an OKF `verified` stamp. Use when the conductor asks to
+  Verifies one concept against the sources it cites: restores source content the concept
+  lost, reconciles conflicting values to the latest source, removes passages no cited source
+  supports, then appends an OKF `verified` stamp. Use when the conductor asks to
   verify a concept path.
-model: claude-sonnet-4-5-20250929
+model: claude-sonnet-5-5
 skills:
   - target-contracts
 ---

@@ -72,11 +72,22 @@ docs/adr/        decisions, especially every deterministic step
 | An enrichment method | `enrichment_methods` in `profile.yaml` plus its skills; structures name it in `enrich.method` | a method that decides where its output goes (the structure does) |
 | A frontmatter field | declare it in the target's concept type with the `okfx_` prefix | a non-OKF field without the prefix |
 
-Agent and skill files: frontmatter (`name`, `description` in third person saying when to use
-it, and for agents `model` as a literal id, `tools`, `skills`), then a short prompt with numbered
-steps, each ending in **Done when**. Positive instructions. Preload a skill only if every run of
-that agent needs it. `.claude/` in a workspace is generated on every run; edit `agents/` and
-`skills/`.
+Agent and skill files follow Anthropic's skill-authoring guidance:
+
+- Frontmatter: `name` (lowercase-hyphen, at most 64 characters, no `claude`/`anthropic`),
+  `description` (third person, starting with a verb such as "Judges …", saying what it does and
+  then "Use when …"; at most 1024 characters), and for agents `model` as a literal id, `tools`,
+  `skills`. Python enforces the name and length rules.
+- Body: a short prompt with numbered steps, each ending in **Done when**. Positive
+  instructions, one term per concept, no dates or version-dependent advice. A file over 100
+  lines opens with a one-line `Contents:` list, because agents may read only the top.
+- Fit the wording to the model the agent pins. Haiku agents (gap-agent, scorer) get explicit,
+  ordered decision steps and an example of the exact command. Sonnet and Opus 5.x agents follow
+  plain wording literally: name the tool to use, and leave out shouted emphasis (MUST, NEVER,
+  CRITICAL), which over-constrains them.
+- Fragile, must-be-exact operations are commands (`record-gap`, `check-concept`), not prose.
+- Preload a skill only if every run of that agent needs it. `.claude/` in a workspace is
+  generated on every run; edit `agents/` and `skills/`.
 
 ## Runtime
 

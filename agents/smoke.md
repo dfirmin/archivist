@@ -1,7 +1,7 @@
 ---
 name: smoke
 description: >
-  Minimal smoke check: reply with exactly the token named in the prompt. Use when
+  Minimal smoke check that replies with exactly the token named in the prompt. Use when
   `archivist smoke-agent` needs to prove a headless sub-agent spawn.
 ---
 

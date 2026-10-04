@@ -17,7 +17,7 @@ kinds:
     uses: [glossary, naming-standards]
     detection:
       - The body uses an acronym that no registry and no cited source expands
-      - A registry or cited source expands it but the concept leaves it unexpanded (origin author)
+      - A cited source expands it but the concept leaves it unexpanded (origin author); an expansion only a registry holds is origin documentation, because registry wording never enters the body
       - An ordinary English word used as an identifier segment (CASE, STATUS, ID, CODE, DATE) is not an acronym
       - A purely technical suffix the naming standards list as a convention is not undefined
     priority: low
