@@ -1,0 +1,6 @@
+version: 1
+issues:
+  title: "[{okfx_team}] {title} — {kind}"
+  labels: [tags, priority, kind]
+  summary_fields: [okfx_team, okfx_structure]
+  routing_field: okfx_team

@@ -1,0 +1,11 @@
+id: policy
+description: A policy people must follow.
+sections:
+  - Purpose
+  - Who It Applies To
+  - Rules
+  - heading: Exceptions
+    required: false
+  - heading: Open Questions
+    owner: placeholder
+    placeholder: "*[Questions for the owning team are collected here during review.]*"

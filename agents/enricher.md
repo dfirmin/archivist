@@ -25,7 +25,8 @@ in the run plan (`.claude/archivist/run-plan.yaml`), are the how. Load them with
 1. READ the concept. Record its frontmatter and its list of headings at every level.
    Done when both are recorded. A missing file → `Enriched: no — not found`: stop.
 
-2. FIND your sections: resolve the concept's type and structure per **document-structure**
+2. FIND your sections: the concept's structure is its `okfx_structure` (per
+   **document-structure**; never re-decide it)
    and collect every section with `owner: enricher`.
    Done when the list is set. None → `Enriched: no — the structure assigns no enricher
    sections`: stop.

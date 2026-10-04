@@ -20,7 +20,7 @@ the `verified` stamp. Scoring and gap judging are other roles.
 2. COMPARE and RESTORE **context loss**: a substantive fact, rule, grain, filter, code
    meaning or attribute a source states that the concept omits, weakens or distorts.
    Sections the structure marks `owner: placeholder` or `owner: enricher` are not losses
-   (structure per **target-contracts**). Fix each loss in the section it belongs to:
+   (the structure is the concept's `okfx_structure`, read per **target-contracts**). Fix each loss in the section it belongs to:
    - omitted: add the fact, worded as the source words it;
    - weakened or distorted: correct the text to what the source says;
    - end the passage with the section's source line

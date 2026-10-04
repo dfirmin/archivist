@@ -1,0 +1,6 @@
+version: 1
+index:
+  title: Handbook
+  group_by: okfx_team
+  group_heading: The team's name from teams.
+  suffix_field: okfx_confidence

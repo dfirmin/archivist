@@ -1,0 +1,32 @@
+version: 1
+kinds:
+  - id: missing_section
+    applies_to: [policy, runbook]
+    definition: A required section has no substantive content.
+    origins: [author, documentation]
+    context: [the concept body, the structure named in okfx_structure, the cited sources]
+    detection:
+      - A required author-owned section of the concept's structure (okfx_structure) is absent or holds only an "Awaiting source material" stub
+      - Placeholder-owned sections are never a missing section
+    priority: medium
+  - id: missing_escalation
+    applies_to: [runbook]
+    definition: An incident runbook gives no way to escalate.
+    origins: [author, documentation]
+    context: [okfx_structure, Escalation, okfx_on_call, the teams reference]
+    uses: [teams]
+    detection:
+      - Only incident-response runbooks are judged; a runbook whose okfx_structure is routine-procedure is absent by definition
+      - The Escalation section itself names no person, team or channel to contact; frontmatter alone does not count, because a responder reads the body
+      - Origin author when teams lists an on_call value for the owning team (the runbook could have said it); documentation otherwise
+    priority: high
+  - id: missing_rollback
+    applies_to: [runbook]
+    definition: A routine procedure that changes a production system gives no way to undo it.
+    origins: [documentation]
+    fixed_origin: documentation
+    context: [okfx_structure, Steps, Rollback]
+    detection:
+      - Only routine-procedure runbooks are judged; incident-response runbooks are absent by definition
+      - The steps change a production system and there is no Rollback section
+    priority: medium

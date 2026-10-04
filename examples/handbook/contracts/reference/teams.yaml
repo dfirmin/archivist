@@ -1,0 +1,10 @@
+# Fictional example.
+teams:
+  platform:
+    name: Platform Engineering
+    lead: platform-lead@example.com
+    on_call: "#platform-oncall"
+  people-ops:
+    name: People Operations
+    lead: people-ops@example.com
+    on_call: "#people-help"

@@ -1,8 +1,10 @@
 version: 1
+# The default concept type; a class can route elsewhere (see subject-area-description below).
 concept_type: business-view-group-overview
 scope: |
-  A document is in scope when the physical view its title names has an inventory row whose
+  A view document is in scope when the physical view its title names has an inventory row whose
   subject_area is an owners slug. No row, or UNKNOWN, leaves it in the inbox.
+  A subject-area document is in scope when the subject area it describes is an owners slug.
 grouping: |
   Documents describing one business view are one group: the same physical view, a view and its
   _INCRMTL_ sibling, or documents linked by catalog_parent_document_id.
@@ -33,3 +35,8 @@ classes:
     description: Anything else about a registered view.
     mode: partial
     sections: best-fit
+  - id: subject-area-description
+    description: Describes a whole subject area rather than one view.
+    concept_type: subject-area-overview   # routed to a different concept type than the default
+    mode: create
+    sections: all

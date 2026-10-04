@@ -1,0 +1,17 @@
+# Structure for documents that walk the reader through a task. Chosen by the knowledge-article
+# structure_rule in concept-types.yaml.
+id: how-to
+description: "A task explained step by step: when to do it, what you need, the steps, and how to check."
+sections:
+  - heading: When To Use
+    description: The situation the steps are for.
+  - heading: Before You Start
+    required: false
+    description: What the reader needs first, when the source says.
+  - heading: Steps
+    description: The steps, in order, as the source gives them.
+  - heading: Check It Worked
+    required: false
+  - heading: Open Questions
+    owner: placeholder
+    placeholder: "*[Questions for the owner are collected here during review.]*"

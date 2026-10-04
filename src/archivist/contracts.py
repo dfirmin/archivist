@@ -50,7 +50,8 @@ OKF_FIELDS = frozenset(
 EXTENSION_PREFIX = "okfx_"
 GAPS_FIELD = "okfx_gaps"
 CONFIDENCE_FIELD = "okfx_confidence"
-ENGINE_FIELDS = frozenset({GAPS_FIELD, CONFIDENCE_FIELD})
+STRUCTURE_FIELD = "okfx_structure"  # the structure the author chose; later stages read it
+ENGINE_FIELDS = frozenset({GAPS_FIELD, CONFIDENCE_FIELD, STRUCTURE_FIELD})
 
 DEFAULT_ORIGINS: Mapping[str, str] = {
     "author": "A cited source or a reference contract holds the information, but the concept "
@@ -387,33 +388,50 @@ def _cross_check(c: TargetContracts, enrichment_methods: Iterable[str] | None) -
     if "intake" in c.documents:
         label = c.rel("intake")
         intake = c.documents["intake"]
-        type_id = intake["concept_type"]
-        spec = types.get(type_id)
+        default = intake.get("concept_type")
+        classes = intake.get("classes") or ()
+
+        def check_type(type_id: str, where: str) -> dict[str, Any] | None:
+            spec = types.get(type_id)
+            if spec is None:
+                errors.append(f"{label}: {where} concept_type {type_id!r} not found")
+            elif not spec.get("authored"):
+                errors.append(f"{label}: {where} concept_type {type_id!r} is not authored: true")
+            else:
+                return spec
+            return None
+
         if "concept-types" not in c.documents:
             errors.append(f"{label}: needs a concept-types contract")
-        elif spec is None:
-            errors.append(f"{label}: concept_type {type_id!r} not found")
-        elif not spec.get("authored"):
-            errors.append(f"{label}: concept_type {type_id!r} is not authored: true")
         else:
-            headings = {
-                s["heading"]
-                for sid in spec.get("structures") or ()
-                if sid in structures
-                for _, s in iter_sections(structures[sid]["sections"])
-            }
+            if default:
+                check_type(default, "default")
+            elif not classes:
+                errors.append(f"{label}: give a default concept_type, or classes that each name one")
             ids: set[str] = set()
-            for cls in intake.get("classes") or ():
+            for cls in classes:
                 if cls["id"] in ids:
                     errors.append(f"{label}: class {cls['id']!r} is listed twice")
                 ids.add(cls["id"])
-                if isinstance(cls.get("sections"), list):
-                    for heading in cls["sections"]:
-                        if heading not in headings:
-                            errors.append(
-                                f"{label}: class {cls['id']!r} routes to {heading!r}, which no "
-                                f"structure of {type_id!r} has"
-                            )
+                type_id = cls.get("concept_type") or default
+                if not type_id:
+                    errors.append(f"{label}: class {cls['id']!r} names no concept_type and there is no default")
+                    continue
+                spec = check_type(type_id, f"class {cls['id']!r}") if cls.get("concept_type") else types.get(type_id)
+                if spec is None or not isinstance(cls.get("sections"), list):
+                    continue
+                headings = {
+                    s["heading"]
+                    for sid in spec.get("structures") or ()
+                    if sid in structures
+                    for _, s in iter_sections(structures[sid]["sections"])
+                }
+                for heading in cls["sections"]:
+                    if heading not in headings:
+                        errors.append(
+                            f"{label}: class {cls['id']!r} routes to {heading!r}, which no "
+                            f"structure of {type_id!r} has"
+                        )
 
     if "gap-kinds" in c.documents:
         label = c.rel("gap-kinds")

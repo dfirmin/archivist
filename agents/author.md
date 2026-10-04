@@ -30,14 +30,15 @@ end. Each step uses tools until its Done when.
 1. READ the document. Done when you have its title, body and any frontmatter.
 
 2. CLASSIFY it with the intake `classes` (none declared → one class, `create`, all sections).
-   Done when one class id is recorded.
+   The class decides the concept type: its own `concept_type`, else the intake default.
+   Done when one class id and its concept type are recorded.
 
 3. SCOPE it per the intake `scope` and the reference data it names.
    Out of scope → leave it in the inbox, record why, go to the next path.
    Done when it is in scope, or left with a reason.
 
-4. RESOLVE the concept: its type (the intake `concept_type`), structure (`structures` and
-   `structure_rule`), title (intake `naming`), path (`path` pattern), the `fields` with their
+4. RESOLVE the concept: its type (from the class), structure (`structures`, and the
+   `structure_rule` when there are several; record it as `okfx_structure`), title (intake `naming`), path (`path` pattern), the `fields` with their
    `from` rules, and the mode per **document-structure**. A later document in this group
    targets the concept an earlier one just wrote (ENRICH).
    Done when type, structure, path, mode and every required field value are known, or a
@@ -71,7 +72,7 @@ end. Each step uses tools until its Done when.
 End with this report and nothing after it:
 
     Authored: <n concepts>
-    - <concept path> — <create|partial|enrich>, class <id>
+    - <concept path> — <create|partial|enrich>, class <id>, type <id>, structure <id> (<why>)
     Left in inbox:
     - <document path> — <reason>
     Judgement calls: <each place a contract left the choice to you, or none>

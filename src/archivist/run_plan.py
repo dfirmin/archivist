@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from archivist.contracts import CONFIDENCE_FIELD, GAPS_FIELD, TargetContracts
+from archivist.contracts import CONFIDENCE_FIELD, GAPS_FIELD, STRUCTURE_FIELD, TargetContracts
 from archivist.profile import Profile, Roster, entry_stage
 
 PLAN_REL = Path(".claude") / "archivist" / "run-plan.yaml"
@@ -39,7 +39,7 @@ def build_run_plan(profile: Profile, roster: Roster, contracts: TargetContracts)
             name: {"path": ref.rel, "description": ref.description}
             for name, ref in sorted(contracts.references.items())
         },
-        "fields": {"gaps": GAPS_FIELD, "confidence": CONFIDENCE_FIELD},
+        "fields": {"gaps": GAPS_FIELD, "confidence": CONFIDENCE_FIELD, "structure": STRUCTURE_FIELD},
         "enrichment_methods": {
             name: dict(spec) for name, spec in sorted(profile.enrichment_methods.items())
         },

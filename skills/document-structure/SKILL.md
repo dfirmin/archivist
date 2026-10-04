@@ -11,10 +11,20 @@ Read the contracts through **target-contracts**. This skill is how they combine.
 
 ## 1. Type and structure
 
-The concept type comes from the intake `concept_type` (authoring) or from the concept's own
-`type` (any later stage: find the entry in `concept-types` whose `type` equals it). One
-entry in `structures` → that structure. Several → apply `structure_rule`, using the
-reference data it names.
+**Authoring (choose once, record it).**
+
+1. Concept type: the document's intake class names it (`concept_type` on the class); a class
+   without one uses the intake's default `concept_type`.
+2. Structure: the type's `structures` list. One entry → that structure. Several → apply the
+   type's `structure_rule` to this document, reading any reference data it names, and pick
+   exactly one of the listed structures.
+3. Record the choice as `okfx_structure: <structure id>` in the concept's frontmatter, and
+   say in your report which rule decided it.
+
+**Any later stage (read, never re-decide).** Find the concept type whose OKF `type` equals
+the concept's `type`. The structure is the concept's `okfx_structure`. Only when that field
+is absent (a concept written before it existed) fall back to the type's single structure or
+its `structure_rule`.
 
 ## 2. Path and mode
 
@@ -69,11 +79,13 @@ CREATE and PARTIAL CREATE write, in this order:
 - `generated: {by: archivist-author/1, at: <now>}`, where `<now>` is the output of
   `date -u +%Y-%m-%dT%H:%M:%SZ` run at write time, never a date you type;
 - `sources` — one `{resource, title}` per cited document;
+- `okfx_structure` — the structure chosen in §1;
 - each `fields` entry from its `from` rule; a `required` field with no value stops the
   write (report it).
 
 ENRICH preserves every existing key, appends to `sources`, and refreshes `generated`.
-Nobody but its owner writes `okfx_gaps`, `okfx_confidence` or `verified`.
+Nobody but its owner writes `okfx_gaps`, `okfx_confidence` or `verified`; `okfx_structure` is
+written by the author on CREATE and never changed afterwards.
 
 ## 5. Companions
 

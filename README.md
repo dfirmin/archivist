@@ -207,12 +207,18 @@ contracts:
   structures: structures/
 ```
 
-Two complete examples ship with the engine:
+Three complete examples ship with the engine, each with sample inbox documents:
 
 - [`examples/minimal`](examples/minimal): policy summaries from two contracts.
+- [`examples/handbook`](examples/handbook): a team handbook. Intake classes route policies and
+  procedures to different concept types; runbooks pick a structure per document by content
+  (routine procedure vs incident response); gap checks use the recorded `okfx_structure`.
 - [`examples/warehouse`](examples/warehouse): data-warehouse business views, with inventory
-  routing, code-extracted logic, glossary checks, scoring and issue publishing, all expressed as
-  contracts.
+  routing, code-extracted logic, glossary checks, a structure chosen by looking up a subject
+  area's archetype, scoring and issue publishing, all expressed as contracts.
+
+**[`docs/contracts.md`](docs/contracts.md)** explains every contract and walks through exactly how
+a document's concept type and structure are chosen.
 
 Schemas for every contract kind are in [`schemas/contracts/`](schemas/contracts/).
 
@@ -317,6 +323,7 @@ Early development. The deterministic layer is tested, and the full pipeline has 
 example targets ([evidence](docs/live-proof/2026-10-04.md)).
 
 - [x] Live proof on `examples/warehouse` and `examples/minimal`
+- [x] Per-class concept-type routing and recorded structure choice (`okfx_structure`)
 - [ ] Live proof of publishing (branch, PR, gap issues) and of `code-logic` enrichment
 - [ ] Live proof in `anthropic-api` and `gateway-key` modes, inside Docker
 - [ ] Glossary reconciliation agent

@@ -33,7 +33,7 @@ The run plan (`.claude/archivist/run-plan.yaml`) lists the same paths bundle-rel
 |---|---|---|
 | `concept-types` | each concept type: OKF `type`, `path`, `structures` + `structure_rule`, `tags`, `fields` (with `from`), `companions` | none — authoring needs it |
 | `structures` (directory) | one file per structure: `sections`, each with `owner` (author, enricher, placeholder), `placeholder`, `enrich`, `subsections` | none — authoring needs it |
-| `intake` | `concept_type`, `scope`, `grouping`, `ordering`, `naming`, `classes` (mode + routed sections) | every document in scope, its own group, one class `create` / all sections |
+| `intake` | `scope`, `grouping`, `ordering`, `naming`, and `classes`: each class's `concept_type` (else the default `concept_type`), mode and routed sections | every document in scope, its own group, one class `create` / all sections |
 | `gap-kinds` | the gap fleet (see the **gap-kinds** skill) | no gap stage |
 | `scoring` | the confidence rubric | no score stage |
 | `catalog` | index grouping and log wording | group the index by concept type |
@@ -62,8 +62,9 @@ expansion or a nearby value is not a lookup hit.
 
 Concept frontmatter uses OKF fields (`type`, `title`, `description`, `tags`, `sources`,
 `generated`, `verified`, `status` …) and `okfx_` extensions. A concept type's `fields` lists
-its extensions and where each value comes from. `okfx_gaps` and `okfx_confidence` belong to
-the engine (gap-agent fleet and scorer); no other role writes them.
+its extensions and where each value comes from. Three `okfx_` fields belong to the engine:
+`okfx_structure` (the author records the structure it chose; every later stage reads it),
+`okfx_gaps` (gap-agent fleet) and `okfx_confidence` (scorer); no other role writes them.
 
 Done when you have the contract entries and reference values the current step needs, each
 traced to a file under `contracts/`.

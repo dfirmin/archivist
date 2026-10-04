@@ -41,13 +41,23 @@ concept_types:
   subject-area-overview:
     type: Subject Area Overview
     description: Business context spanning one subject area.
+    authored: true
     structures: [data-subject-area, process-subject-area]
+    # Several structures, chosen by looking something up: the subject area's archetype in the
+    # owners reference data. Every overview in one subject area therefore gets the same structure
+    # (compare examples/handbook, where the rule reads each document's content instead).
     structure_rule: Use the structure named for the subject area's archetype in owners (data → data-subject-area, process → process-subject-area).
     path: "knowledge/subject-areas/{okfx_subject_area}/overview.md"
+    tags: ["{archetype}", "{okfx_subject_area}", subject-area-overview]
     fields:
       okfx_subject_area:
         description: The subject-area slug.
         required: true
+        from: the subject area the document describes; must be an owners slug
+      okfx_product_owner:
+        description: Owner of record.
+        required: true
+        from: owners — the first product_owners email of the subject area
 
   physical-view:
     type: View

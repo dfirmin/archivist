@@ -1,0 +1,36 @@
+version: 1
+concept_types:
+  policy:
+    type: Policy
+    description: A rule people must follow, who it applies to, and its exceptions.
+    authored: true
+    structures: [policy]                       # one structure: no rule needed
+    path: "knowledge/policies/{title}.md"
+    tags: [policy, "{okfx_team}"]
+    fields:
+      okfx_team:
+        description: The owning team's key.
+        required: true
+        from: teams — the team the document names as owner
+
+  runbook:
+    type: Runbook
+    description: How to carry out an operational task.
+    authored: true
+    structures: [routine-procedure, incident-response]
+    # Several structures, so a rule says which one fits THIS document. Decided by content, per
+    # document: two runbooks from the same team can get different structures.
+    structure_rule: >-
+      Use incident-response when the document is about responding to an outage, alert or other
+      unplanned failure. Use routine-procedure for planned, repeatable work such as deployments,
+      rotations or maintenance.
+    path: "knowledge/runbooks/{title}.md"
+    tags: [runbook, "{okfx_team}"]
+    fields:
+      okfx_team:
+        description: The owning team's key.
+        required: true
+        from: teams — the team the document names as owner
+      okfx_on_call:
+        description: Where to escalate.
+        from: teams — the owning team's on_call value

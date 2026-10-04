@@ -16,7 +16,9 @@ engine supplies no kinds.
 2. Applicability: map the concept's `type` to its concept-type id (the `concept-types`
    entry whose `type` equals it). The kind applies when `enabled` is not false and
    `applies_to` holds that id. Not applicable → record it absent (below) and report why.
-3. Treat `context` as the evidence to inspect and `detection` as the binding decision list.
+3. The concept's structure, when a kind needs it (required sections, owners), is the one
+   named in its `okfx_structure`.
+   Treat `context` as the evidence to inspect and `detection` as the binding decision list.
    Judge substance, not heading presence. When the kind lists `uses`, read those reference
    contracts the way their `guidance` says.
 4. Origin: with `fixed_origin`, omit `--origin`. Otherwise choose from the kind's `origins`,

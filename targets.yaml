@@ -18,6 +18,14 @@ targets:
     status: active
     auto_trigger: false
 
+  - slug: team-handbook
+    name: Team Handbook
+    description: Team policies and runbooks (see examples/handbook for its contracts)
+    target_repo: https://github.com/example-org/team-handbook
+    type: docs
+    status: active
+    auto_trigger: false
+
   - slug: archivist-knowledge-01
     name: Archivist Knowledge 01
     description: Live end-to-end test target for archivist, including publishing

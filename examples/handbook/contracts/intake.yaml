@@ -1,0 +1,21 @@
+version: 1
+# No default concept_type: every class says which concept type its documents become.
+scope: A document is in scope when the team it names as owner is listed in teams; otherwise it stays in the inbox.
+grouping: Each document is its own concept, except a policy amendment, which joins the policy it amends.
+naming: The document's title without dates or version numbers, in title case.
+classes:
+  - id: policy-document
+    description: States rules people must follow (a policy, standard or guideline).
+    concept_type: policy
+    mode: create
+    sections: all
+  - id: policy-amendment
+    description: Changes an existing policy.
+    concept_type: policy
+    mode: enrich-only          # never creates a policy on its own; waits for the policy itself
+    sections: best-fit
+  - id: procedure-document
+    description: Tells someone how to carry out a task (a runbook, playbook or how-to).
+    concept_type: runbook      # the runbook type then picks routine-procedure or incident-response
+    mode: create
+    sections: all

@@ -223,3 +223,45 @@ def test_targets_cannot_ship_agents(minimal: Path) -> None:
 def test_slug_must_match_the_registry(minimal: Path) -> None:
     with pytest.raises(ContractError, match="does not match target 'other'"):
         resolve_run(minimal, engine=ENGINE, expected_slug="other")
+
+
+def test_intake_classes_route_to_their_own_concept_types(warehouse: Path) -> None:
+    def change(d):  # type: ignore[no-untyped-def]
+        d["classes"].append({"id": "area-overview", "description": "x", "concept_type": "subject-area-overview",
+                             "mode": "create", "sections": ["Source Systems"]})
+
+    edit_yaml(warehouse / "contracts/intake.yaml", change)
+    edit_yaml(warehouse / "contracts/concept-types.yaml",
+              lambda d: d["concept_types"]["subject-area-overview"].update({"authored": True}))
+    load_contracts(warehouse, enrichment_methods=METHODS)
+
+
+def test_class_routing_is_checked_against_that_class_type(warehouse: Path) -> None:
+    def change(d):  # type: ignore[no-untyped-def]
+        d["classes"].append({"id": "a", "description": "x", "concept_type": "physical-view", "mode": "create"})
+        d["classes"].append({"id": "b", "description": "x", "concept_type": "nope", "mode": "create"})
+        d["classes"].append({"id": "c", "description": "x", "concept_type": "business-view-group-overview",
+                             "mode": "create", "sections": ["Framework"]})
+
+    edit_yaml(warehouse / "contracts/intake.yaml", change)
+    message = contracts_error(warehouse)
+    assert "class 'a' concept_type 'physical-view' is not authored: true" in message
+    assert "class 'b' concept_type 'nope' not found" in message
+    assert "class 'c' routes to 'Framework'" in message
+
+
+def test_intake_without_a_default_needs_a_type_on_every_class(warehouse: Path) -> None:
+    def change(d):  # type: ignore[no-untyped-def]
+        d.pop("concept_type")
+        d["classes"][0]["concept_type"] = "business-view-group-overview"
+
+    edit_yaml(warehouse / "contracts/intake.yaml", change)
+    assert "class 'attribute-notes' names no concept_type and there is no default" in contracts_error(warehouse)
+
+
+def test_okfx_structure_is_engine_owned(minimal: Path) -> None:
+    edit_yaml(
+        minimal / "contracts/concept-types.yaml",
+        lambda d: d["concept_types"]["policy-summary"]["fields"].update({"okfx_structure": {"description": "x"}}),
+    )
+    assert "okfx_structure: engine-owned field" in contracts_error(minimal)

@@ -1,0 +1,20 @@
+version: 1
+scale: {min: 0.0, max: 1.0, precision: 2}
+no_gaps: 1.0
+bands:
+  - min: 0.9
+    max: 0.99
+    meaning: Complete; only minor gaps.
+  - min: 0.7
+    max: 0.89
+    meaning: Usable; one notable gap.
+  - min: 0.4
+    max: 0.69
+    meaning: Usable with care; a high-priority gap or several notable ones.
+  - min: 0.0
+    max: 0.39
+    meaning: Not safe to follow as written.
+priority_weight:
+  low: minor
+  medium: notable
+  high: major — an incident runbook without escalation is not safe to follow

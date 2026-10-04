@@ -6,7 +6,12 @@ concept_types:
     type: Knowledge Article
     description: One topic explained from the documents that describe it.
     authored: true                       # the author may create these from inbox documents
-    structures: [article]
+    # Two structures, so a rule picks one per document from what the document is. The author
+    # records its choice as okfx_structure on the article; later stages read that.
+    structures: [article, how-to]
+    structure_rule: >-
+      Use how-to when the document mainly tells the reader how to do something, step by step.
+      Otherwise use article.
     path: "knowledge/articles/{title}.md"
     tags: [article]
     fields:

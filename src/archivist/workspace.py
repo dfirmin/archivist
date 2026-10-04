@@ -63,6 +63,7 @@ _INDEX = "contracts/target.yaml"
 _STARTER_FILES = (
     "contracts/concept-types.yaml",
     "contracts/structures/article.yaml",
+    "contracts/structures/how-to.yaml",
     "contracts/intake.yaml",
     "contracts/gap-kinds.yaml",
     "contracts/scoring.yaml",
@@ -240,12 +241,22 @@ def scaffold_workspace(
 
     # Reference copies of the engine's example targets (documentation; agents never read them).
     examples = engine_examples_root()
-    write(f"{_EXAMPLES_DIR}/README.md", render("examples-README.md"))
+    readme = render("examples-README.md")
+    readme_path = workspace / _EXAMPLES_DIR / "README.md"
+    if readme_path.exists() and readme_path.read_text(encoding="utf-8") == readme:
+        skipped.append(f"{_EXAMPLES_DIR}/README.md")
+    else:
+        write(f"{_EXAMPLES_DIR}/README.md", readme, replace=True)
     for example in sorted(p for p in examples.iterdir() if (p / "contracts").is_dir()):
-        for source in sorted((example / "contracts").rglob("*")):
+        for source in sorted([*(example / "contracts").rglob("*"), *(example / "sources").rglob("*")]):
             if source.is_file():
                 relative = f"{_EXAMPLES_DIR}/{example.name}/{source.relative_to(example).as_posix()}"
-                write(relative, source.read_text(encoding="utf-8"))
+                text = source.read_text(encoding="utf-8")
+                destination = workspace / relative
+                if destination.exists() and destination.read_text(encoding="utf-8") == text:
+                    skipped.append(relative)
+                else:
+                    write(relative, text, replace=True)  # engine-owned reference copy: refreshed
 
     return ScaffoldResult(
         state=ScaffoldState.SCAFFOLDED,

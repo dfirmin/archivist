@@ -1,0 +1,31 @@
+# Example: a team handbook. Shows the two ways a document's shape is chosen:
+#   1. intake classes ROUTE documents to different concept types (policy vs runbook);
+#   2. a concept type with several structures CHOOSES one per document with a structure_rule
+#      (runbook → routine-procedure or incident-response, decided by the document's content).
+# The author records the structure it chose as okfx_structure on the concept; later stages
+# (and the missing_escalation gap below) read that instead of deciding again.
+version: 1
+slug: team-handbook
+name: Team Handbook
+engine: v0.2.0
+default_pipeline: handbook
+pipelines:
+  handbook: [author, verifier, gap-agent, scorer]   # no enricher: nothing here is code-derived
+
+contracts:
+  concept-types: concept-types.yaml
+  structures: structures/
+  intake: intake.yaml
+  gap-kinds: gap-kinds.yaml
+  scoring: scoring.yaml
+  catalog: catalog.yaml
+  publishing: publishing.yaml
+
+reference:
+  teams:
+    path: reference/teams.yaml
+    description: The teams that own handbook documents, with their lead and on-call channel.
+    guidance: |
+      A team key (platform, people-ops) is valid only when it appears under teams. Match the owner a
+      document names to a team by its key or its name. Copy the lead and on_call values exactly;
+      never invent a contact.

@@ -1,0 +1,11 @@
+id: incident-response
+description: What to do when something breaks.
+sections:
+  - Symptoms
+  - Impact
+  - Immediate Actions
+  - Diagnosis
+  - heading: Escalation
+    description: Who to contact and when, as the source states it.
+  - heading: Follow-up
+    required: false

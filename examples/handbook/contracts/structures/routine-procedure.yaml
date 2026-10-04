@@ -1,0 +1,10 @@
+id: routine-procedure
+description: Planned, repeatable work done step by step.
+sections:
+  - When To Use
+  - Prerequisites
+  - Steps
+  - Verification
+  - heading: Rollback
+    required: false
+    description: How to undo the change, when the source gives one.
