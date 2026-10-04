@@ -1,109 +1,269 @@
 # Archivist
 
-A **contract-driven document engine**. Headless [Claude Code](https://code.claude.com) agents
-author, enrich, verify, gap-check and score [OKF](https://github.com/GoogleCloudPlatform/open-knowledge-format)
-concepts in a knowledge repo. The repo decides *what* to produce, through contracts; the
-engine supplies *how*, through a fixed team of general-purpose agents.
+**A contract-driven document engine.** Archivist runs a fixed team of [Claude Code](https://code.claude.com)
+agents that author, enrich, verify, gap-check and score knowledge documents in a git repository,
+following rules that the repository itself defines.
 
-```
-target repo (owns the what)                 engine (owns the how)
-───────────────────────────                 ─────────────────────
-contracts/target.yaml   ← required          agents/profile.yaml   team, requires, dispatch, pipelines
-contracts/concept-types.yaml                agents/conductor.md   main agent: follows the run plan
-contracts/structures/*.yaml                 agents/intake-planner, author, enricher,
-contracts/intake.yaml          optional,            verifier, gap-agent, scorer
-contracts/gap-kinds.yaml       declared     skills/               target-contracts, document-structure,
-contracts/scoring.yaml         as the               gap-kinds, update-catalog, code-logic method,
-contracts/catalog.yaml         pipeline             git / PR / issue publishing
-contracts/publishing.yaml      needs        schemas/contracts/    one JSON Schema per contract kind
-contracts/reference/*  (any target data)    src/archivist/        validate, resolve, launch (thin)
-knowledge/  references/  index.md  log.md
-```
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![Output](https://img.shields.io/badge/output-OKF%20v0.2-purple)
+![Status](https://img.shields.io/badge/status-early%20development-orange)
 
-## How a run works
+---
 
-1. **Validate.** Python loads `contracts/target.yaml` and every contract it declares, checks
-   syntax, schemas and cross-references, enforces the `okfx_` prefix on non-OKF fields, and
-   refuses the run if the chosen pipeline's agents `require` a contract the target did not
-   declare. It also refuses targets that try to ship agents or skills.
-2. **Install.** Engine skills and agents are copied into `<workspace>/.claude/`. The
-   conductor's `Agent` tool is narrowed to the pipeline's roster.
-3. **Plan.** Python writes `.claude/archivist/run-plan.yaml`: the stages in order, each with its
-   dispatch rules from the profile, plus contract and reference paths.
-4. **Run.** `claude -p --agent conductor` reads the plan and carries each group of inbox
-   documents through the stages, then catalogs and (optionally) publishes it. An inbox scan is
-   one session per group.
-5. **Guard.** The run fails if the entry stage never dispatched. Python writes a redacted
-   transcript per sub-agent under `out/transcripts/`.
+## Table of contents
 
-Agents read contracts through the **target-contracts** skill, so a target can add its own
-reference data (an inventory, an owners list, a glossary) with a description and lookup
-guidance, and no engine change.
+- [Why Archivist](#why-archivist)
+- [How it works](#how-it-works)
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Usage](#usage)
+- [Writing a target](#writing-a-target)
+- [Configuration](#configuration)
+- [Project structure](#project-structure)
+- [Development](#development)
+- [Contributing](#contributing)
+- [Status and roadmap](#status-and-roadmap)
+- [License](#license)
 
-## Contracts at a glance
+## Why Archivist
 
-| Kind | Decides | Required when |
+Knowledge pipelines tend to hard-code one kind of output: one document shape, one routing rule,
+one scoring rubric. Every new kind of document then means changing the pipeline itself.
+
+Archivist separates the two halves of the problem:
+
+| | Owns | Lives in |
 |---|---|---|
-| `concept-types` | OKF `type`, path pattern, structures, tags, `okfx_` fields, companions | author, enricher, gap-agent run |
-| `structures/` | sections in order and who owns each (author, enricher, placeholder) | author, enricher run |
-| `intake` | scope, grouping, ordering, naming, document classes and routing | never (defaults apply) |
-| `gap-kinds` | the gap fleet: applies-to types, evidence, detection, origin, priority | gap-agent, scorer run |
-| `scoring` | the confidence rubric | scorer runs |
-| `catalog` | index grouping and log wording | never |
-| `publishing` | gap issue title, labels, routing | never |
-| `reference` | anything else the target wants agents to look up | never |
+| **Target** (your knowledge repo) | the *what*: document types, structure, intake rules, gap criteria, scoring, reference data | `contracts/` in that repo |
+| **Engine** (this repo) | the *how*: a stable team of general-purpose agents and the skills they use | `agents/`, `skills/` |
 
-`examples/warehouse` reproduces a full business-view setup (inventory routing, archetype-style
-structures, code-extracted logic, glossary checks) entirely as contracts. `examples/minimal` is
-a policy-summary target with two contracts and an author + verifier pipeline.
+One engine serves many targets. A new kind of document is a new set of contracts, not an engine
+change.
 
-## Pipelines
+## How it works
 
-The engine profile defines `full`, `author-verify`, `enrich` and `gaps`. A target adds or
-replaces pipelines in its index, using engine agents only:
+```mermaid
+flowchart LR
+    subgraph Target repo
+        C[contracts/]
+        I[references/inbox/]
+        K[knowledge/]
+    end
+    subgraph Engine
+        V[validate contracts] --> P[write run plan]
+        P --> CO[conductor]
+        CO --> PL[intake-planner]
+        CO --> A[author] --> E[enricher] --> VE[verifier] --> G[gap-agent fleet] --> S[scorer]
+    end
+    C --> V
+    I --> A
+    S --> K
+    CO -->|branch, PR, gap issues| GH[(GitHub)]
+```
+
+1. **Validate.** The engine loads `contracts/target.yaml` and every contract it declares. It checks
+   syntax, JSON Schemas and cross-references, and refuses the run if the chosen pipeline needs a
+   contract the target did not declare.
+2. **Plan.** It installs the engine's agents and skills into the workspace and writes a run plan:
+   the stages in order, and how each one is dispatched.
+3. **Run.** The conductor agent follows the plan. It takes each group of inbox documents through
+   every stage, updates the catalog, and optionally publishes a branch, a pull request and one
+   GitHub issue per gap.
+4. **Guard.** A run fails if its first stage never started. Python writes a redacted transcript
+   for every sub-agent.
+
+Judgement stays with the agents. Python only validates, prepares and launches.
+
+## Features
+
+- **Contracts are optional by default.** Only `contracts/target.yaml` is required. Everything else
+  is needed only when an agent in the pipeline requires it.
+- **Your own reference data.** Inventories, owner lists, glossaries or anything else can be
+  described in the contract index and read by agents, with no engine change.
+- **Pipelines from engine agents.** Targets choose, reorder or drop stages. They cannot ship
+  agents of their own.
+- **Open Knowledge Format output.** Concepts use [OKF v0.2](https://github.com/GoogleCloudPlatform/open-knowledge-format)
+  fields where OKF defines them. Every extension field carries the `okfx_` prefix, and validation
+  enforces it.
+- **Safe parallel gap checks.** One agent per gap kind runs in parallel. Each verdict goes through
+  a locked, YAML-safe `record-gap` command, so concurrent agents can't lose each other's findings.
+- **Published for review.** Each run produces one branch and one pull request, with gap issues
+  deduplicated by title across re-runs.
+
+## Quick start
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/), the only runtime (on macOS, `colima start`
+  if the daemon is down)
+- Access to Claude Code through a LiteLLM gateway key, or your own Claude Code login
+- A [`gh`](https://cli.github.com/) login on the host for publishing runs
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/dfirmin/archivist.git
+cd archivist
+cp .env.example .env        # fill in the gateway values, or use CLAUDE_AUTH_MODE=local-claude
+```
+
+### 2. Run the offline tests
+
+```bash
+./tests/run.sh
+```
+
+### 3. Try the example target
+
+```bash
+./scripts/docker-run.sh prepare-target --target sample --local /workspace/sample   # seed the bundle
+cp -r examples/warehouse/contracts/. out/workspace/sample/contracts/                # add the example contracts
+cp examples/warehouse/references/inbox/documents/*.md out/workspace/sample/references/inbox/documents/
+
+./scripts/docker-run.sh validate /workspace/sample --pipeline full
+./scripts/docker-run.sh prepare-workspace /workspace/sample   # inspect .claude/ and the run plan
+
+CLAUDE_AUTH_MODE=local-claude SKIP_PUBLISH=1 \
+  INBOX_FILE=references/inbox/documents/catalog-custcase-essential-information.md \
+  ./scripts/run-conductor.sh
+```
+
+Results appear under `out/workspace/sample/knowledge/`, and transcripts under `out/transcripts/`.
+
+## Usage
+
+All commands run inside the container through the wrappers in `scripts/`.
+
+| Command | What it does |
+|---|---|
+| `archivist validate <workspace> [--pipeline P …]` | Check a target's contracts against one or more pipelines |
+| `archivist prepare-target --target <slug> [--local] <path>` | Seed an empty repo with the minimal bundle and `contracts/target.yaml` |
+| `archivist load-target --target <slug> <path>` | Fresh clone of a registered target, then validate (publisher mode) |
+| `archivist prepare-workspace <workspace> [--pipeline P]` | Install agents, skills and the run plan into `.claude/` |
+| `archivist run-conductor <workspace> […]` | Run the pipeline (live) |
+| `archivist record-gap <concept> --kind K …` | Write one gap verdict (used by gap-agents) |
+| `archivist smoke-agent` | Prove headless Claude Code can spawn a sub-agent (live) |
+
+Common conductor runs:
+
+```bash
+CLAUDE_AUTH_MODE=local-claude ./scripts/run-conductor.sh                          # whole inbox, publish
+CLAUDE_AUTH_MODE=local-claude INBOX_LIMIT=1 SKIP_PUBLISH=1 ./scripts/run-conductor.sh
+CLAUDE_AUTH_MODE=local-claude PIPELINE=gaps SKIP_PUBLISH=1 \
+  CONCEPT_FILE='knowledge/…/overview.md' ./scripts/run-conductor.sh               # existing concept only
+```
+
+`SKIP_PUBLISH=1` leaves git alone. Trusted git operations (`load-target`, remote
+`prepare-target`) go through `./scripts/publisher-run.sh`.
+
+## Writing a target
+
+A target is an OKF bundle with a `contracts/` directory:
+
+```
+my-knowledge/
+├── contracts/
+│   ├── target.yaml          # required: slug, pipelines, contract paths, reference data
+│   ├── concept-types.yaml   # OKF type, path pattern, structures, okfx_ fields
+│   ├── structures/*.yaml    # sections and who owns each one
+│   ├── intake.yaml          # scope, grouping, document classes and routing
+│   ├── gap-kinds.yaml       # gaps to judge, per concept type
+│   ├── scoring.yaml         # confidence rubric
+│   └── reference/…          # any data of your own
+├── knowledge/               # authored concepts (concept ID = path)
+├── references/inbox/        # documents waiting to be authored
+├── index.md  log.md         # OKF reserved files
+```
+
+| Contract | Required when the pipeline runs | Default without it |
+|---|---|---|
+| `concept-types`, `structures` | author, enricher (concept-types also for gap-agent) | none |
+| `intake` | never | every document in scope, each authored as its own concept |
+| `gap-kinds` | gap-agent, scorer | none |
+| `scoring` | scorer | none |
+| `catalog`, `publishing` | never | index grouped by type; issue title `{title} — {kind}` |
+
+A minimal index:
 
 ```yaml
-default_pipeline: no-code
+version: 1
+slug: policy-notes
+default_pipeline: summarize
 pipelines:
-  no-code: [author, verifier, gap-agent, scorer]
+  summarize: [author, verifier]       # engine agents only
+contracts:
+  concept-types: concept-types.yaml
+  structures: structures/
 ```
 
-## Run
+Two complete examples ship with the engine:
 
-Docker is the only runtime (`colima start` if the daemon is down).
+- [`examples/minimal`](examples/minimal): policy summaries from two contracts.
+- [`examples/warehouse`](examples/warehouse): data-warehouse business views, with inventory
+  routing, code-extracted logic, glossary checks, scoring and issue publishing, all expressed as
+  contracts.
+
+Schemas for every contract kind are in [`schemas/contracts/`](schemas/contracts/).
+
+## Configuration
+
+Environment variables (see [`.env.example`](.env.example)):
+
+| Variable | Purpose |
+|---|---|
+| `CLAUDE_AUTH_MODE` | `gateway-key` (default) or `local-claude` (mounts your `~/.claude-code-auth`) |
+| `LITELLM_API_BASE`, `LITELLM_API_KEY` | Gateway URL and key for `gateway-key` mode |
+| `LITELLM_MODEL` / `ACT_CLAUDE_MODEL` | Default model id; agents may set their own |
+| `ANTHROPIC_BASE_URL` | Gateway or local proxy endpoint for Claude Code |
+| `GITHUB_TOKEN` | Used by the conductor for publishing (or the mounted `gh` login) |
+
+`run-conductor.sh` also reads `TARGET_SLUG`, `WORKSPACE`, `PIPELINE`, `INBOX_FILE`,
+`INBOX_LIMIT`, `GROUP_LIMIT`, `CONCEPT_FILE`, `SKIP_PUBLISH` and `RUN_BRANCH`.
+
+Targets are registered in [`targets.yaml`](targets.yaml).
+
+## Project structure
+
+```
+agents/             engine agents and profile.yaml (team, requirements, dispatch, pipelines)
+skills/             engine skills, one concept each
+schemas/contracts/  JSON Schema per contract kind
+src/archivist/      contract validation, roster and run plan, runner, record-gap, CLI
+bundle-template/    what prepare-target seeds into a new target
+examples/           example targets (minimal, warehouse)
+tests/              offline tests for the deterministic code
+docs/adr/           architecture decisions
+```
+
+## Development
 
 ```bash
-./tests/run.sh                                            # offline pytest
-CLAUDE_AUTH_MODE=local-claude ./tests/smoke-claude.sh     # live: claude -p + sub-agent spawn
-
-./scripts/docker-run.sh prepare-target --target sample --local /workspace/sample   # seed a repo
-./scripts/docker-run.sh validate /workspace/sample --pipeline full                  # check contracts
-./scripts/publisher-run.sh load-target --target sample /workspace/sample            # fresh clone + validate
-./scripts/docker-run.sh prepare-workspace /workspace/sample                         # inspect .claude/ and the plan
-
-CLAUDE_AUTH_MODE=local-claude ./scripts/run-conductor.sh                            # whole inbox, publish
-CLAUDE_AUTH_MODE=local-claude INBOX_LIMIT=1 SKIP_PUBLISH=1 ./scripts/run-conductor.sh
-CLAUDE_AUTH_MODE=local-claude SKIP_PUBLISH=1 \
-  INBOX_FILE=references/inbox/documents/foo.md ./scripts/run-conductor.sh
-CLAUDE_AUTH_MODE=local-claude SKIP_PUBLISH=1 PIPELINE=gaps \
-  CONCEPT_FILE='knowledge/…/overview.md' ./scripts/run-conductor.sh                 # existing concept
+pip install -e ".[dev]"     # Python 3.12+
+python -m pytest -q         # or ./tests/run.sh inside Docker
 ```
 
-`SKIP_PUBLISH=1` leaves git alone. Without it the conductor pushes one branch, opens or reuses
-one pull request and files one issue per gap, so the container needs a `gh` login
-(`docker-compose.github.yml` mounts the host `~/.config/gh`).
+Offline tests cover deterministic code only: contract validation, roster resolution, the run
+plan, `record-gap` and the run guards. Agent changes are proven by a **live** run on a real
+target, inspected by hand. [`AGENTS.md`](AGENTS.md) lists what each agent must show.
 
-`record-gap` is the only way a gap-agent writes `okfx_gaps`:
+## Contributing
 
-```bash
-archivist record-gap 'knowledge/…/overview.md' --kind undefined_acronym --origin author --description '…'
-```
+1. Read [`AGENTS.md`](AGENTS.md) for the rules (agentic first; domain lives in contracts;
+   targets ship contracts only) and [`CONTEXT.md`](CONTEXT.md) for vocabulary.
+2. Open an issue describing the change. Triage labels: `needs-triage`, `needs-info`,
+   `ready-for-agent`, `ready-for-human`, `wontfix`.
+3. Keep tests green, and attach live-run evidence for any agent, skill or dispatch change.
+4. Record any new deterministic step in [`docs/adr/`](docs/adr/).
 
-## Auth
+## Status and roadmap
 
-`CLAUDE_AUTH_MODE=local-claude` mounts the host `~/.claude-code-auth` and lets Claude Code call
-the local `apiKeyHelper`, so tokens refresh during long sessions. The default `gateway-key`
-mode uses `LITELLM_API_KEY` from `.env`. All model traffic goes through the LiteLLM gateway.
+Early development. The deterministic layer is tested; the agents have not yet been proven in
+live runs on this engine.
 
-See [`AGENTS.md`](AGENTS.md) for contributor rules, [`CONTEXT.md`](CONTEXT.md) for vocabulary
-and [`docs/adr/`](docs/adr/) for decisions.
+- [ ] Live proof on `examples/warehouse` and `examples/minimal`
+- [ ] Glossary reconciliation agent
+- [ ] CI for the offline test suite
+
+## License
+
+No license has been chosen yet. Until one is added, all rights are reserved by the author.
