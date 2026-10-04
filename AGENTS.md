@@ -58,6 +58,7 @@ bundle-template/ what prepare-target seeds: OKF root files, a pinned contracts/t
                  generic starter contracts (the engine's examples/ are copied in as reference)
 examples/        example targets: warehouse (full business-view setup), minimal (author + verify)
 tests/           offline pytest for the deterministic code
+docs/            guides: contracts, testing, releasing, authoring agents and skills
 docs/adr/        decisions, especially every deterministic step
 ```
 
