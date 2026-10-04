@@ -236,6 +236,9 @@ def scaffold_workspace(
         written.append(f"{_INDEX} (engine pin set to {pin}: the layout changed)")
     elif _add_missing_pin(index, pin):
         written.append(f"{_INDEX} (engine pin added)")
+    elif engine is not None and _set_pin(index, pin):
+        # An explicit --engine on an existing target is an upgrade (or downgrade) request.
+        written.append(f"{_INDEX} (engine pin set to {pin})")
     else:
         skipped.append(_INDEX)
 

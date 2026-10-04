@@ -170,3 +170,11 @@ def test_a_partial_repo_without_knowledge_is_refused(tmp_path: Path) -> None:
     (workspace / "knowledge/.gitkeep").unlink()
     (workspace / "knowledge").rmdir()
     assert detect_scaffold_state(workspace, TARGET) is ScaffoldState.REFUSE
+
+
+def test_explicit_engine_moves_the_pin_of_an_existing_target(tmp_path: Path) -> None:
+    workspace = tmp_path / "acme"
+    scaffold_workspace(workspace, TARGET, engine="v0.1.0")
+    result = scaffold_workspace(workspace, TARGET, engine="v0.3.0")
+    assert result.written == ("contracts/target.yaml (engine pin set to v0.3.0)",)
+    assert scaffold_workspace(workspace, TARGET, engine="v0.3.0").written == ()

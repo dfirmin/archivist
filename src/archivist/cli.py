@@ -197,7 +197,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--registry", help="Override targets.yaml path")
     prepare.add_argument("--local", action="store_true", help="Scaffold a local directory without GitHub")
     prepare.add_argument("--no-publish", action="store_true", help="Clone and scaffold without a commit or PR")
-    prepare.add_argument("--engine", help="Engine release to pin the new target to (default: this engine, if it is a release)")
+    prepare.add_argument("--engine", help="Engine release to pin: a new target's pin (default: this engine, if a release), or the new pin of an existing target")
     prepare.set_defaults(func=_prepare_target)
 
     load = commands.add_parser("load-target", help="Clone a registered target fresh and validate its contracts")
