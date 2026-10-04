@@ -1,0 +1,66 @@
+# Publish knowledge/ to SharePoint: a folder in a document library, through Microsoft Graph.
+#
+# Ad hoc: Actions tab > publish-sharepoint > Run workflow. It publishes the branch you run it on.
+# Set the secrets and the site first (see .github/archivist/SECRETS.md); "Dry run" needs
+# neither the secrets nor network access and only lists what would be written.
+#
+# Seeded once by `archivist prepare-target`. After that this file is yours: the engine never
+# overwrites it, so edit the runner section below for your network.
+name: publish-sharepoint
+
+on:
+  workflow_dispatch:
+    inputs:
+      site_url:
+        description: "SharePoint site, e.g. https://contoso.sharepoint.com/sites/Knowledge. Blank uses the SHAREPOINT_SITE_URL repository variable."
+        required: false
+        type: string
+      library:
+        description: "Document library name. Blank uses SHAREPOINT_LIBRARY, or Documents."
+        required: false
+        type: string
+      folder:
+        description: "Folder in the library. Blank uses SHAREPOINT_FOLDER, or knowledge."
+        required: false
+        type: string
+      dry_run:
+        description: "List what would be written; send nothing"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-sharepoint
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # RUNNER (stub for the target to fill in): GitHub-hosted by default. For a self-hosted runner
+    # replace the next line, e.g.  runs-on: [self-hosted, linux, x64]
+    # The runner needs python3 and outbound HTTPS to login.microsoftonline.com and graph.microsoft.com.
+    runs-on: ubuntu-latest
+    env:
+      SHAREPOINT_TENANT_ID: ${{ secrets.SHAREPOINT_TENANT_ID }}
+      SHAREPOINT_CLIENT_ID: ${{ secrets.SHAREPOINT_CLIENT_ID }}
+      SHAREPOINT_CLIENT_SECRET: ${{ secrets.SHAREPOINT_CLIENT_SECRET }}
+      SHAREPOINT_SITE_URL: ${{ inputs.site_url || vars.SHAREPOINT_SITE_URL }}
+      SHAREPOINT_LIBRARY: ${{ inputs.library || vars.SHAREPOINT_LIBRARY }}
+      SHAREPOINT_FOLDER: ${{ inputs.folder || vars.SHAREPOINT_FOLDER }}
+      # Government clouds use other endpoints; set these repository variables if yours does
+      # (for example https://login.microsoftonline.us and https://graph.microsoft.us).
+      SHAREPOINT_LOGIN_URL: ${{ vars.SHAREPOINT_LOGIN_URL }}
+      SHAREPOINT_GRAPH_URL: ${{ vars.SHAREPOINT_GRAPH_URL }}
+      # RUNNER NETWORK (stub): behind a proxy or a private CA, set these here, for example
+      # HTTPS_PROXY: http://proxy.example.com:8080
+      # SSL_CERT_FILE: /etc/ssl/certs/corporate-ca.pem
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets and settings
+        run: python3 .github/archivist/publish.py sharepoint --check ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Publish knowledge/ to SharePoint
+        run: python3 .github/archivist/publish.py sharepoint ${{ inputs.dry_run && '--dry-run' || '' }}

@@ -79,6 +79,16 @@ _STARTER_FILES = (
     "contracts/scoring.yaml",
 )
 _EXAMPLES_DIR = "examples"
+# Publishing workflows: seeded once and then the target's own (never overwritten, never
+# refreshed by an upgrade, not part of scaffold detection). docs/adr/0003.
+_PUBLISHING_FILES = (
+    ".github/workflows/publish-databricks.yml",
+    ".github/workflows/publish-confluence.yml",
+    ".github/workflows/publish-sharepoint.yml",
+    ".github/archivist/publish.py",
+    ".github/archivist/secrets.yaml",
+    ".github/archivist/SECRETS.md",
+)
 
 
 class ScaffoldState(str, Enum):
@@ -249,6 +259,8 @@ def scaffold_workspace(
     for relative in _ROOT_FILES:
         if relative == _INDEX:
             continue
+        write(relative, render(relative))
+    for relative in _PUBLISHING_FILES:
         write(relative, render(relative))
     if seed_starters:
         for relative in _STARTER_FILES:
