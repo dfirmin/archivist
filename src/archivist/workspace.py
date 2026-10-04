@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -12,7 +13,16 @@ from typing import Protocol
 
 import yaml
 
-from archivist.engines import scaffold_pin
+from archivist.engines import (
+    DEFAULT_ENGINE_REPO,
+    ENGINE_REPO_ENV,
+    PINNED_ENV,
+    ensure_engine,
+    read_pin,
+    running_commit,
+    running_version,
+    scaffold_pin,
+)
 from archivist.errors import WorkspaceError
 from archivist.targets import Target, resolve_target
 
@@ -183,7 +193,21 @@ def scaffold_workspace(
             f"found: {', '.join(top_level)}"
         )
     root = (template_root or bundle_template_root()).resolve()
-    pin = scaffold_pin(engine)
+    resolved: list[str] = []
+
+    def pin() -> str:
+        """The pin to write, resolved only when something is written with it."""
+        if not resolved:
+            resolved.append(scaffold_pin(engine))
+        return resolved[0]
+
+    current = read_pin(workspace)
+    legacy = any((workspace / old).is_dir() for old, _ in _LEGACY_DIRS)  # migration re-pins
+    if engine is not None and current and current != engine.strip() and not legacy:
+        raise WorkspaceError(
+            f"{target.slug} already pins engine {current}; move it with "
+            f"`prepare-target --target {target.slug} --upgrade {engine.strip()}`"
+        )
     written: list[str] = []
     skipped: list[str] = []
     workspace.mkdir(parents=True, exist_ok=True)
@@ -203,12 +227,10 @@ def scaffold_workspace(
         source = root / relative
         if not source.is_file():
             raise WorkspaceError(f"bundle template is missing {relative}")
-        return (
-            source.read_text(encoding="utf-8")
-            .replace("{{slug}}", target.slug)
-            .replace("{{name}}", target.name)
-            .replace("{{engine}}", pin)
-        )
+        text = source.read_text(encoding="utf-8")
+        if "{{engine}}" in text:
+            text = text.replace("{{engine}}", pin())
+        return text.replace("{{slug}}", target.slug).replace("{{name}}", target.name)
 
     def write(relative: str, text: str, *, replace: bool = False) -> None:
         destination = workspace / relative
@@ -232,40 +254,46 @@ def scaffold_workspace(
         for relative in _STARTER_FILES:
             write(relative, render(relative))
         write(_INDEX, render(_INDEX), replace=True)
-    elif migrated and _set_pin(index, pin):
-        written.append(f"{_INDEX} (engine pin set to {pin}: the layout changed)")
-    elif _add_missing_pin(index, pin):
+    elif migrated and _set_pin(index, pin()):
+        written.append(f"{_INDEX} (engine pin set to {pin()}: the layout changed)")
+    elif not current and _add_missing_pin(index, pin()):
         written.append(f"{_INDEX} (engine pin added)")
-    elif engine is not None and _set_pin(index, pin):
-        # An explicit --engine on an existing target is an upgrade (or downgrade) request.
-        written.append(f"{_INDEX} (engine pin set to {pin})")
     else:
         skipped.append(_INDEX)
 
-    # Reference copies of the engine's example targets (documentation; agents never read them).
-    examples = engine_examples_root()
-    readme = render("examples-README.md")
-    readme_path = workspace / _EXAMPLES_DIR / "README.md"
-    if readme_path.exists() and readme_path.read_text(encoding="utf-8") == readme:
-        skipped.append(f"{_EXAMPLES_DIR}/README.md")
-    else:
-        write(f"{_EXAMPLES_DIR}/README.md", readme, replace=True)
-    for example in sorted(p for p in examples.iterdir() if (p / "contracts").is_dir()):
-        for source in sorted([*(example / "contracts").rglob("*"), *(example / "sources").rglob("*")]):
-            if source.is_file():
-                relative = f"{_EXAMPLES_DIR}/{example.name}/{source.relative_to(example).as_posix()}"
-                text = source.read_text(encoding="utf-8")
-                destination = workspace / relative
-                if destination.exists() and destination.read_text(encoding="utf-8") == text:
-                    skipped.append(relative)
-                else:
-                    write(relative, text, replace=True)  # engine-owned reference copy: refreshed
+    _refresh_examples(workspace, engine_examples_root().parent, render("examples-README.md"), written, skipped)
 
     return ScaffoldResult(
         state=ScaffoldState.SCAFFOLDED,
         written=tuple(written),
         skipped=tuple(skipped),
     )
+
+
+def _refresh_examples(workspace: Path, engine_root: Path, readme: str | None,
+                      written: list[str], skipped: list[str]) -> None:
+    """Refresh the reference copies of an engine's example targets (agents never read them).
+
+    ``engine_root`` is that engine's source tree: its ``examples/`` are copied, so a target
+    always holds the examples of the engine it is pinned to.
+    """
+    def put(relative: str, text: str) -> None:
+        destination = workspace / relative
+        if destination.exists() and destination.read_text(encoding="utf-8") == text:
+            skipped.append(relative)
+            return
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(text, encoding="utf-8")
+        written.append(relative)
+
+    if readme is not None:
+        put(f"{_EXAMPLES_DIR}/README.md", readme)
+    examples = engine_root / "examples"
+    for example in sorted(p for p in examples.iterdir() if (p / "contracts").is_dir()) if examples.is_dir() else ():
+        for source in sorted([*(example / "contracts").rglob("*"), *(example / "sources").rglob("*")]):
+            if source.is_file():
+                put(f"{_EXAMPLES_DIR}/{example.name}/{source.relative_to(example).as_posix()}",
+                    source.read_text(encoding="utf-8"))
 
 
 def _migrate_legacy_layout(workspace: Path, written: list[str]) -> bool:
@@ -568,3 +596,155 @@ def prepare_target(
         return PrepareResult(target, workspace, "onboarding-pr-updated" if changed else "onboarding-pr-open",
                              scaffold, sha, pr_url)
     return PrepareResult(target, workspace, "published", scaffold, sha, pr_url)
+
+
+UPGRADE_BRANCH = "archivist/upgrade-engine-{pin}"
+
+
+@dataclass(frozen=True, slots=True)
+class UpgradeResult:
+    target: Target
+    workspace: Path
+    action: str  # "up-to-date", "local", "checked", "published", "pr-updated"
+    previous: str | None
+    pin: str
+    written: tuple[str, ...] = ()
+    validation: str = ""
+    commit_sha: str | None = None
+    pull_request_url: str | None = None
+
+
+def _engine_source(pin: str, environ: dict[str, str] | None) -> tuple[Path, list[str], list[str]]:
+    """The source tree of engine ``pin`` and the command that runs its CLI.
+
+    This engine when the pin names it; otherwise the pinned engine, installed into the cache
+    the same way a pinned run installs it. Returns (source tree, CLI command, flags for validate).
+    """
+    if pin in (running_version(), running_commit()):
+        return engine_examples_root().parent, [sys.executable, "-m", "archivist.cli"], ["--engine", "current"]
+    bin_dir = ensure_engine(pin, environ=environ)
+    return bin_dir.parents[1] / "src", [str(bin_dir / "archivist")], []
+
+
+def _validate_with(command: list[str], flags: list[str], workspace: Path,
+                   environ: dict[str, str] | None) -> subprocess.CompletedProcess[str]:
+    """``archivist validate`` on the target, run by the engine the target now pins.
+
+    The default pipeline, plus every pipeline the target defines itself.
+    """
+    env = dict(environ if environ is not None else os.environ)
+    env.pop(PINNED_ENV, None)
+    data = yaml.safe_load((workspace / _INDEX).read_text(encoding="utf-8")) or {}
+    pipelines = [f"--pipeline={name}" for name in (data.get("pipelines") or {})]
+    output: list[str] = []
+    for extra in ([], pipelines) if pipelines else ([],):
+        result = subprocess.run([*command, "validate", str(workspace), *flags, *extra],
+                                capture_output=True, text=True, env=env)
+        output.append((result.stdout + result.stderr).strip())
+        if result.returncode != 0:
+            return subprocess.CompletedProcess(result.args, result.returncode, "\n".join(output), "")
+    return subprocess.CompletedProcess(command, 0, "\n".join(output), "")
+
+
+def upgrade_target(
+    *,
+    target_slug: str,
+    workspace: Path,
+    pin: str,
+    registry_path: Path | None = None,
+    local: bool = False,
+    publish: bool = True,
+    runner: CommandRunner | None = None,
+    environ: dict[str, str] | None = None,
+) -> UpgradeResult:
+    """Move an existing target to another engine: the pin and the examples, nothing else.
+
+    Contracts, sources, knowledge, index and log are never touched. The target is validated by
+    the engine it moves to before anything is committed; a failure leaves the target as it was
+    on GitHub and reports what that engine refused.
+    """
+    target = resolve_target(target_slug, registry_path)
+    workspace = workspace.resolve()
+    pin = scaffold_pin(pin.strip())
+    command_runner = runner or SubprocessRunner()
+
+    if not local:
+        if not _publisher_enabled(environ):
+            raise WorkspaceError("remote target preparation is restricted to the credentialed publisher container")
+        _ensure_checkout(target, workspace, command_runner)
+        _prepare_base_branch(workspace, command_runner)
+    if detect_scaffold_state(workspace, target) is not ScaffoldState.SCAFFOLDED:
+        raise WorkspaceError(
+            f"{target.slug} is not an archivist target yet; scaffold it with prepare-target (no --upgrade)"
+        )
+    previous = read_pin(workspace)
+    if previous == pin:
+        return UpgradeResult(target, workspace, "up-to-date", previous, pin)
+
+    source, command, flags = _engine_source(pin, environ)
+    index = workspace / _INDEX
+    original = index.read_text(encoding="utf-8")
+    written: list[str] = []
+    skipped: list[str] = []
+    _set_pin(index, pin)
+    written.append(f"{_INDEX} (engine {previous} → {pin})")
+    readme_template = source / "bundle-template" / "examples-README.md"
+    readme = (readme_template.read_text(encoding="utf-8").replace("{{slug}}", target.slug)
+              .replace("{{name}}", target.name).replace("{{engine}}", pin)
+              if readme_template.is_file() else None)
+    _refresh_examples(workspace, source, readme, written, skipped)
+
+    validation = _validate_with(command, flags, workspace, environ)
+    if validation.returncode != 0:
+        index.write_text(original, encoding="utf-8")
+        raise WorkspaceError(
+            f"engine {pin} refuses {target.slug}'s contracts; the pin was not changed:\n{validation.stdout}"
+        )
+    if local:
+        return UpgradeResult(target, workspace, "local", previous, pin, tuple(written), validation.stdout)
+    if not publish:
+        return UpgradeResult(target, workspace, "checked", previous, pin, tuple(written), validation.stdout)
+
+    branch = UPGRADE_BRANCH.format(pin=pin if pin.startswith("v") else pin[:12])
+    for args in (
+        ["git", "checkout", "-B", branch, _BASE_BRANCH],
+        ["git", "config", "user.name", ENGINE_GIT_NAME],
+        ["git", "config", "user.email", ENGINE_GIT_EMAIL],
+        ["git", "add", "-A"],
+        ["git", "commit", "-m", f"chore({target.slug}): upgrade engine {previous} → {pin}"],
+        ["git", "push", "-u", "origin", branch, "--force"],  # engine-owned branch
+    ):
+        _run(command_runner, args, cwd=workspace)
+    sha = _run(command_runner, ["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
+
+    owner = target.github_slug.split("/")[0]
+    existing = _gh_api(command_runner, f"repos/{target.github_slug}/pulls?head={owner}:{branch}&state=open",
+                       jq=".[0].html_url // empty", allow_failure=True).stdout.strip()
+    if existing:
+        return UpgradeResult(target, workspace, "pr-updated", previous, pin, tuple(written),
+                             validation.stdout, sha, existing)
+    env = environ if environ is not None else os.environ
+    repo = (env.get(ENGINE_REPO_ENV, "").strip() or DEFAULT_ENGINE_REPO).removesuffix(".git")
+    body = "\n".join([
+        f"Moves `{target.slug}` from engine `{previous}` to `{pin}`.",
+        "",
+        f"- What changed in the engine: {repo}/compare/{previous}...{pin}",
+        "- Changed here: the `engine:` line in `contracts/target.yaml` and the reference copies in "
+        "`examples/`. Contracts, sources and knowledge are untouched.",
+        f"- Validated by engine `{pin}`:",
+        "",
+        "```",
+        validation.stdout,
+        "```",
+        "",
+        "Before merging, a trial run on the new engine (the pin on `main` stays as it is):",
+        "",
+        "```bash",
+        f"archivist run-conductor <checkout> --engine {pin} --skip-publish",
+        "```",
+    ])
+    created = _gh_api(command_runner, f"repos/{target.github_slug}/pulls",
+                      f"title=Upgrade engine to {pin}", f"head={branch}", f"base={_BASE_BRANCH}",
+                      f"body={body}", method="POST", jq=".html_url")
+    return UpgradeResult(target, workspace, "published", previous, pin, tuple(written),
+                         validation.stdout, sha, created.stdout.strip())

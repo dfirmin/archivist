@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "archivist"
-version = "0.4.0.dev0"
+dynamic = ["version"]  # from git tags: see docs/releasing.md
 description = "Contract-driven document engine: engine-owned Claude Code agents author OKF bundles from target-owned contracts"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -22,6 +22,13 @@ dev = [
 
 [project.scripts]
 archivist = "archivist.cli:main"
+
+[tool.setuptools_scm]
+# The version comes from git: exactly X.Y.Z at the commit tagged vX.Y.Z, a .devN version on
+# every other commit. A build without git history (a Docker context without .git) gets a
+# development version, which can never pass for a release.
+version_file = "src/archivist/_version.py"
+fallback_version = "0.0.0.dev0"
 
 [tool.setuptools.packages.find]
 where = ["src"]

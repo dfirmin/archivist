@@ -10,7 +10,8 @@ import pytest
 
 from archivist.dispatch_check import check_entry_stage_ran, planned_groups, planner_gave_up
 from archivist.engine import load_engine, resolve_run
-from archivist.errors import ContractError
+from archivist.engines import EngineVersionError
+from archivist.errors import ContractError, WorkspaceError
 from archivist.stream import StreamMonitor
 from archivist.targets import Target
 from archivist.workspace import ScaffoldState, detect_scaffold_state, scaffold_workspace
@@ -172,9 +173,25 @@ def test_a_partial_repo_without_knowledge_is_refused(tmp_path: Path) -> None:
     assert detect_scaffold_state(workspace, TARGET) is ScaffoldState.REFUSE
 
 
-def test_explicit_engine_moves_the_pin_of_an_existing_target(tmp_path: Path) -> None:
+def test_a_pin_moves_only_through_upgrade(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from archivist.workspace import upgrade_target
+
     workspace = tmp_path / "acme"
     scaffold_workspace(workspace, TARGET, engine="v0.1.0")
-    result = scaffold_workspace(workspace, TARGET, engine="v0.3.0")
-    assert result.written == ("contracts/target.yaml (engine pin set to v0.3.0)",)
-    assert scaffold_workspace(workspace, TARGET, engine="v0.3.0").written == ()
+    with pytest.raises(WorkspaceError, match="--upgrade v0.3.0"):
+        scaffold_workspace(workspace, TARGET, engine="v0.3.0")
+
+    registry = tmp_path / "targets.yaml"
+    registry.write_text("targets:\n  - {slug: acme, name: Acme Docs, description: d,"
+                        " target_repo: 'https://github.com/example-org/acme', type: docs, status: active}\n",
+                        encoding="utf-8")
+    (workspace / "knowledge/kept.md").write_text("untouched\n", encoding="utf-8")
+    monkeypatch.setattr("archivist.workspace.running_version", lambda: "v1.2.3")  # upgrade to this engine
+    result = upgrade_target(target_slug="acme", workspace=workspace, pin="v1.2.3",
+                            registry_path=registry, local=True)
+    assert (result.previous, result.pin, result.action) == ("v0.1.0", "v1.2.3", "local")
+    assert "PASS  contracts valid" in result.validation
+    assert "engine: v1.2.3" in (workspace / "contracts/target.yaml").read_text(encoding="utf-8")
+    assert (workspace / "knowledge/kept.md").read_text(encoding="utf-8") == "untouched\n"
+    with pytest.raises(EngineVersionError, match="development build"):
+        upgrade_target(target_slug="acme", workspace=workspace, pin="v1.2.4.dev1", registry_path=registry, local=True)

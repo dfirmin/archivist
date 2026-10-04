@@ -19,7 +19,7 @@ from archivist.engines import enforce_pin, running_version
 from archivist.errors import ArchivistError
 from archivist.load_target import load_target
 from archivist.record_gap import record_gap
-from archivist.workspace import prepare_target
+from archivist.workspace import prepare_target, upgrade_target
 
 
 def _fail(err: Exception) -> int:
@@ -158,7 +158,39 @@ def _run_conductor(args: argparse.Namespace) -> int:
     )
 
 
+def _upgrade_target(args: argparse.Namespace) -> int:
+    try:
+        result = upgrade_target(
+            target_slug=args.target,
+            workspace=Path(args.workspace),
+            pin=args.upgrade,
+            registry_path=Path(args.registry) if args.registry else None,
+            local=args.local,
+            publish=not args.no_publish,
+        )
+    except ArchivistError as err:
+        return _fail(err)
+    print(f"target    {result.target.slug}")
+    print(f"workspace {result.workspace}")
+    print(f"engine    {result.previous} → {result.pin}")
+    print(f"action    {result.action}")
+    for path in result.written:
+        print(f"WRITE     {path}")
+    for line in result.validation.splitlines():
+        print(f"  | {line}")
+    if result.commit_sha:
+        print(f"commit    {result.commit_sha}")
+    if result.pull_request_url:
+        print(f"PR        {result.pull_request_url}")
+    print("PASS  target upgraded" if result.action != "up-to-date" else f"PASS  already on {result.pin}")
+    return 0
+
+
 def _prepare_target(args: argparse.Namespace) -> int:
+    if args.upgrade:
+        if args.engine:
+            return _fail(ArchivistError("--upgrade and --engine do not combine: --upgrade names the new pin"))
+        return _upgrade_target(args)
     try:
         result = prepare_target(
             target_slug=args.target,
@@ -216,7 +248,13 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--registry", help="Override targets.yaml path")
     prepare.add_argument("--local", action="store_true", help="Scaffold a local directory without GitHub")
     prepare.add_argument("--no-publish", action="store_true", help="Clone and scaffold without a commit or PR")
-    prepare.add_argument("--engine", help="Engine release to pin: a new target's pin (default: this engine, if a release), or the new pin of an existing target")
+    prepare.add_argument("--engine", help="A new target's engine pin (default: this engine, if it is a release)")
+    prepare.add_argument(
+        "--upgrade",
+        metavar="PIN",
+        help="Move an existing target to engine PIN (a release tag or a full commit SHA): changes only "
+             "the pin and examples/, validates on that engine, opens a PR",
+    )
     prepare.set_defaults(func=_prepare_target)
 
     load = commands.add_parser("load-target", help="Clone a registered target fresh and validate its contracts")

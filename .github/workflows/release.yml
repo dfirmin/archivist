@@ -1,0 +1,90 @@
+# Release: press "Run workflow" in the Actions tab and type the version (for example 0.4.0).
+#
+# Tags the current tip of main as vX.Y.Z after the offline tests pass, and publishes a GitHub
+# release with generated notes. Nothing is edited or committed: the engine's version comes from
+# git (setuptools-scm), so the tagged commit reports exactly X.Y.Z and every later commit
+# reports a development version that no target can pin. Tags are never moved or reused.
+# See docs/releasing.md.
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v (for example 0.4.0 or 0.5.0-rc.1)"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only main is released
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run this workflow on main (it ran on ${GITHUB_REF})."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags and history: the version is computed from them
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check the version
+        id: version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a release version (X.Y.Z or X.Y.Z-rc.N, no leading v)."
+            exit 1
+          fi
+          tag="v$VERSION"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::$tag already exists on $(git rev-parse "$tag^{commit}"); tags are never moved. Pick the next version."
+            exit 1
+          fi
+          latest=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n1)
+          if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "$tag" | sort -V | tail -n1)" != "$tag" ]; then
+            echo "::error::$tag is not newer than the latest release $latest."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Run the offline tests
+        run: |
+          pip install -e ".[dev]"
+          python -m pytest -q
+
+      - name: Tag and check the engine reports the release
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "archivist $TAG" "$GITHUB_SHA"
+          reported=$(archivist --version | awk '{print $2}')
+          if [ "$reported" != "$TAG" ]; then
+            echo "::error::the tagged engine reports $reported, not $TAG"
+            exit 1
+          fi
+          git push origin "refs/tags/$TAG"
+          echo "Tagged $GITHUB_SHA as $TAG."
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          prerelease=""
+          [[ "$TAG" == *-rc.* ]] && prerelease="--prerelease"
+          gh release create "$TAG" --verify-tag --generate-notes --title "archivist $TAG" $prerelease

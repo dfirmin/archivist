@@ -232,21 +232,21 @@ until that target opts in:
 engine: v0.3.0          # a release tag, or a full commit SHA
 ```
 
-- `prepare-target` writes the pin for you (the engine's own release, or `--engine vX.Y.Z`).
+- `prepare-target` writes the pin of a new target (the engine's own release, or `--engine vX.Y.Z`).
 - Every command that works on a target (`validate`, `load-target`, `prepare-workspace`,
   `run-conductor`) checks the pin first. If the running engine is a different version, it
   fetches the pinned release from `ARCHIVIST_ENGINE_REPO` (default: this repository), installs
   it once into `ARCHIVIST_ENGINE_CACHE`, and hands the command to it. Agents calling
   `archivist record-gap` during that run use the pinned engine too.
-- **Try** an upgrade for one run with `--engine v0.2.0` (or `ENGINE=v0.2.0` for
+- **Try** another engine for one command with `--engine v0.4.0` (or `ENGINE=v0.4.0` for
   `run-conductor.sh`); `--engine current` uses the installed engine regardless of the pin.
-- **Adopt** an upgrade by changing `engine:` in the target repo through a pull request.
+- **Adopt** an upgrade with `prepare-target --target <slug> --upgrade v0.4.0`: it validates the
+  target on the new engine and opens a PR that changes only the pin and `examples/`.
 
-Releasing the engine: set `version` in `pyproject.toml` and `src/archivist/__init__.py` to the
-release (for example `0.3.0`) and push that commit to `main`. The `release-tag` GitHub Actions
-workflow runs the offline tests and tags the commit `v0.3.0`; development versions (`.devN`) are
-never tagged, and an existing tag is never moved. Then move `main` to the next `.devN` version.
-A test keeps the two version strings equal.
+Versions come from git tags: the commit tagged `v0.4.0` reports `v0.4.0`, every other commit a
+development version that cannot be pinned (pin its commit SHA to test it). Releasing is a button:
+Actions → **release** → type the version. [`docs/releasing.md`](docs/releasing.md) has the whole
+flow and [`docs/testing.md`](docs/testing.md) how to test unreleased code against a target.
 
 ## Configuration
 
