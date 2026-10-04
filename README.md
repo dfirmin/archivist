@@ -1,8 +1,14 @@
 # Archivist
 
-**A contract-driven document engine.** Archivist runs a fixed team of [Claude Code](https://code.claude.com)
-agents that author, enrich, verify, gap-check and score knowledge documents in a git repository,
-following rules that the repository itself defines.
+**The system of record for business context.** Archivist compiles the documents your organization
+already has (wiki pages, runbooks, data-warehouse views, answers from the people who know) into a
+git repository of structured knowledge where every claim cites its source, every missing piece is
+recorded as a gap, and every document carries a confidence score. Semantic layers, ontologies,
+data catalogs and AI assistants read from it; none of them replace it.
+
+A fixed team of [Claude Code](https://code.claude.com) agents does the authoring, enrichment,
+verification, gap-checking and scoring. Your repository's contracts decide what gets written and
+how it is judged.
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -14,6 +20,7 @@ following rules that the repository itself defines.
 ## Table of contents
 
 - [Why Archivist](#why-archivist)
+- [Where it sits](#where-it-sits)
 - [How it works](#how-it-works)
 - [Features](#features)
 - [Quick start](#quick-start)
@@ -28,10 +35,33 @@ following rules that the repository itself defines.
 
 ## Why Archivist
 
-Knowledge pipelines tend to hard-code one kind of output: one document shape, one routing rule,
-one scoring rubric. Every new kind of document then means changing the pipeline itself.
+Business context is the bottleneck for every agent deployment. Text-to-SQL, analytics copilots
+and support assistants all fail the same way: the model is fine, but nobody wrote down what a
+"customer case" is, which column is authoritative, or who decides when two documents disagree.
+On real enterprise schemas, supplying that context moves accuracy by tens of points; swapping
+models moves it by a few.
 
-Archivist separates the two halves of the problem:
+Every platform now offers to mine your Confluence and Slack and build that context for you.
+Each one builds it inside its own product, from whatever it can scrape, with no record of where a
+definition came from, no list of what it could not find, and no way to carry it to the next
+platform. Buy two and you maintain two.
+
+Archivist takes the other position: **the knowledge is the asset, so it lives in a repository you
+own, in a format anything can read, with the audit trail intact.**
+
+What makes a concept Archivist writes different from a page an LLM summarized:
+
+| Property | What it means in the repo |
+|---|---|
+| **Provenance** | Every concept lists the source documents it was authored from. A correction from a subject-matter expert is itself a cited source, not an anonymous edit. |
+| **Gaps are first-class** | What the sources did *not* say is recorded in `okfx_gaps`, rendered in the document, and filed as a GitHub issue routed to an owner. Visible ignorance beats confident silence. |
+| **Confidence is computed, not asserted** | `okfx_confidence` follows the repository's own scoring contract, from the gaps that remain. A document with an open high-priority gap cannot score well. |
+| **Verified against sources** | A verifier stage restores content the author dropped, resolves conflicts between sources by rule, and removes text no source supports. |
+| **Review before publish** | One run, one branch, one pull request. Humans merge. |
+| **Open format** | Markdown with [OKF v0.2](https://github.com/GoogleCloudPlatform/open-knowledge-format) frontmatter. Readable by people, by git, and by any downstream tool. |
+
+The engine knows nothing about your domain. The repository's contracts define the document
+types, structures, intake rules, gap criteria and scoring:
 
 | | Owns | Lives in |
 |---|---|---|
@@ -39,7 +69,51 @@ Archivist separates the two halves of the problem:
 | **Engine** (this repo) | the *how*: a stable team of general-purpose agents and the skills they use | `agents/`, `skills/` |
 
 One engine serves many targets. A new kind of document is a new set of contracts, not an engine
-change.
+change. A target is pinned to an engine release, so an engine upgrade never changes a
+repository's output until that repository opts in.
+
+## Where it sits
+
+Archivist is upstream of the tools that consume business context and downstream of the places it
+is written. It is not a semantic layer, a catalog, a vector database or a chat product, and it does
+not try to be.
+
+```mermaid
+flowchart LR
+    subgraph Sources
+        W[Wikis: Confluence, SharePoint, Notion]
+        R[Runbooks and READMEs in git]
+        D[Warehouse views and SQL]
+        S[Subject-matter experts]
+    end
+    subgraph Archivist
+        A[(Knowledge repo\nprovenance, gaps, confidence)]
+    end
+    subgraph Consumers
+        SL[Semantic layers and ontologies]
+        CAT[Data catalogs]
+        AG[Agents and assistants]
+        IDX[Search and vector indexes]
+    end
+    W --> A
+    R --> A
+    D --> A
+    S --> A
+    A --> SL
+    A --> CAT
+    A --> AG
+    A --> IDX
+```
+
+| Consumer | What it takes from the repo | What it adds that Archivist does not |
+|---|---|---|
+| **Semantic layers and ontologies**: TextQL Ontology, dbt Semantic Layer, Snowflake Semantic Views, Databricks metric views and Genie, Cube, LookML, Palantir Foundry | Definitions, glossary terms, join keys, code sets, business rules, the markdown context their agents read | Metric formulas, query generation, row-level security |
+| **Data catalogs**: Alation, Collibra, Atlan, DataHub, Unity Catalog | Descriptions, owners, certified definitions | Lineage from execution, access policy, stewardship workflow |
+| **Agents and assistants**: Claude, Copilot, Cursor, in-house agents | Concepts to cite, confidence to report, gaps to escalate | The conversation |
+| **Search and vector indexes**: pgvector, Qdrant, LanceDB, enterprise search | Concept text and frontmatter as filterable metadata | Retrieval. The index is derived and disposable; the repo is not. |
+
+None of these formats carries source citations, confidence or a gap ledger. That is why the repo
+stays the system of record and the consumers stay consumers.
 
 ## How it works
 
@@ -324,12 +398,25 @@ target, inspected by hand. [`AGENTS.md`](AGENTS.md) lists what each agent must s
 Early development. The deterministic layer is tested, and the full pipeline has run live on both
 example targets ([evidence](docs/live-proof/2026-10-04.md)).
 
+Compiler:
+
 - [x] Live proof on `examples/warehouse` and `examples/minimal`
 - [x] Per-class concept-type routing and recorded structure choice (`okfx_structure`)
 - [ ] Live proof of publishing (branch, PR, gap issues) and of `code-logic` enrichment
 - [ ] Live proof in `anthropic-api` and `gateway-key` modes, inside Docker
 - [ ] Glossary reconciliation agent
 - [ ] CI for the offline test suite
+
+Closing the loop (planned):
+
+- [ ] Gap lifecycle: close the issue when a later run records the gap absent
+- [ ] `answer` and `correction` document classes, so an expert's reply is an attributed source
+- [ ] Export targets: an index file for ontology tools, catalog descriptions, semantic-layer
+      instruction fields, generated from the repo
+- [ ] Knowledge assistants that answer with citations, confidence and open gaps, and ask the
+      owner when they cannot
+- [ ] A librarian agent that pulls documents from permitted sources, drops them in the inbox and
+      opens pull requests, reachable from Teams
 
 ## License
 
