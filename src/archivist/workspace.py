@@ -10,6 +10,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Protocol
 
+import yaml
+
 from archivist.engines import scaffold_pin
 from archivist.errors import WorkspaceError
 from archivist.targets import Target, resolve_target
@@ -26,7 +28,8 @@ KNOWLEDGE_DIR = "knowledge"
 INBOX_DIR = "references/inbox/documents"
 PROCESSED_DIR = "references/processed/documents"
 _SCAFFOLD_DIRS = (KNOWLEDGE_DIR, INBOX_DIR, PROCESSED_DIR)
-# The minimum a target needs. Every other contract is optional and added by the target.
+# What makes a repo an archivist target (scaffold detection). Starter contracts and examples
+# are seeded too, but a target may replace or delete them.
 _ROOT_FILES = (
     "README.md",
     "AGENTS.md",
@@ -35,6 +38,18 @@ _ROOT_FILES = (
     "okf/PROFILE.md",
     "contracts/target.yaml",
 )
+
+
+_INDEX = "contracts/target.yaml"
+# Generic, valid starter contracts: the full pipeline runs on a fresh scaffold.
+_STARTER_FILES = (
+    "contracts/concept-types.yaml",
+    "contracts/structures/article.yaml",
+    "contracts/intake.yaml",
+    "contracts/gap-kinds.yaml",
+    "contracts/scoring.yaml",
+)
+_EXAMPLES_DIR = "examples"
 
 
 class ScaffoldState(str, Enum):
@@ -87,6 +102,10 @@ class SubprocessRunner:
 
 def bundle_template_root() -> Path:
     return Path(__file__).resolve().parents[2] / "bundle-template"
+
+
+def engine_examples_root() -> Path:
+    return Path(__file__).resolve().parents[2] / "examples"
 
 
 def _run(
@@ -158,29 +177,80 @@ def scaffold_workspace(
             placeholder.write_text("", encoding="utf-8")
             written.append(placeholder.relative_to(workspace).as_posix())
 
-    for relative in _ROOT_FILES:
+    def render(relative: str) -> str:
         source = root / relative
         if not source.is_file():
             raise WorkspaceError(f"bundle template is missing {relative}")
-        destination = workspace / relative
-        if destination.exists():
-            skipped.append(relative)
-            continue
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        text = source.read_text(encoding="utf-8")
-        text = (
-            text.replace("{{slug}}", target.slug)
+        return (
+            source.read_text(encoding="utf-8")
+            .replace("{{slug}}", target.slug)
             .replace("{{name}}", target.name)
             .replace("{{engine}}", pin)
         )
+
+    def write(relative: str, text: str, *, replace: bool = False) -> None:
+        destination = workspace / relative
+        if destination.exists() and not replace:
+            skipped.append(relative)
+            return
+        destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(text, encoding="utf-8")
         written.append(relative)
+
+    # The contract index decides whether the starter contracts are seeded: on a new target, or
+    # on an index that still declares nothing (an untouched or pre-starter scaffold). An index
+    # that declares contracts is the target's own and is only given an engine pin if it lacks one.
+    index = workspace / _INDEX
+    seed_starters = not index.exists() or _declares_nothing(index)
+    for relative in _ROOT_FILES:
+        if relative == _INDEX:
+            continue
+        write(relative, render(relative))
+    if seed_starters:
+        for relative in _STARTER_FILES:
+            write(relative, render(relative))
+        write(_INDEX, render(_INDEX), replace=True)
+    elif _add_missing_pin(index, pin):
+        written.append(f"{_INDEX} (engine pin added)")
+    else:
+        skipped.append(_INDEX)
+
+    # Reference copies of the engine's example targets (documentation; agents never read them).
+    examples = engine_examples_root()
+    write(f"{_EXAMPLES_DIR}/README.md", render("examples-README.md"))
+    for example in sorted(p for p in examples.iterdir() if (p / "contracts").is_dir()):
+        for source in sorted((example / "contracts").rglob("*")):
+            if source.is_file():
+                relative = f"{_EXAMPLES_DIR}/{example.name}/{source.relative_to(example).as_posix()}"
+                write(relative, source.read_text(encoding="utf-8"))
 
     return ScaffoldResult(
         state=ScaffoldState.SCAFFOLDED,
         written=tuple(written),
         skipped=tuple(skipped),
     )
+
+
+def _declares_nothing(index: Path) -> bool:
+    """True for an index with no contracts and no reference data (safe to replace)."""
+    try:
+        data = yaml.safe_load(index.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        return False
+    return isinstance(data, dict) and not data.get("contracts") and not data.get("reference")
+
+
+def _add_missing_pin(index: Path, pin: str) -> bool:
+    """Insert ``engine: <pin>`` after ``slug:`` in an index that has no pin. True if changed."""
+    text = index.read_text(encoding="utf-8")
+    data = yaml.safe_load(text) or {}
+    if not isinstance(data, dict) or data.get("engine"):
+        return False
+    lines = text.splitlines(keepends=True)
+    at = next((i + 1 for i, line in enumerate(lines) if line.startswith("slug:")), len(lines))
+    lines.insert(at, f"engine: {pin}\n")
+    index.write_text("".join(lines), encoding="utf-8")
+    return True
 
 
 def _publisher_enabled(environ: dict[str, str] | None = None) -> bool:
@@ -257,15 +327,16 @@ def _remote_branch_exists(
     return result.returncode == 0
 
 
-def _checkout_existing_scaffold(
-    workspace: Path,
-    target: Target,
-    runner: CommandRunner,
-) -> bool:
-    if not _remote_branch_exists(workspace, ONBOARDING_BRANCH, runner):
-        return False
-    _run(runner, ["git", "checkout", "-B", ONBOARDING_BRANCH, f"origin/{ONBOARDING_BRANCH}"], cwd=workspace)
-    return detect_scaffold_state(workspace, target) is ScaffoldState.SCAFFOLDED
+def _open_onboarding_pr(target: Target, runner: CommandRunner) -> str | None:
+    """The open onboarding PR's URL. A merged or closed one means onboarding may run again."""
+    owner = target.github_slug.split("/")[0]
+    url = _gh_api(
+        runner,
+        f"repos/{target.github_slug}/pulls?head={owner}:{ONBOARDING_BRANCH}&state=open",
+        jq=".[0].html_url // empty",
+        allow_failure=True,
+    ).stdout.strip()
+    return url or None
 
 
 def _has_head(workspace: Path, runner: CommandRunner) -> bool:
@@ -320,19 +391,11 @@ def _publish_scaffold(
     )
     _run(
         runner,
-        ["git", "push", "-u", "origin", ONBOARDING_BRANCH, "--force-with-lease"],
+        # --force: the branch is engine-owned; a leftover from a merged onboarding is replaced.
+        ["git", "push", "-u", "origin", ONBOARDING_BRANCH, "--force"],
         cwd=workspace,
     )
     sha = _run(runner, ["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
-    owner = target.github_slug.split("/")[0]
-    existing = _gh_api(
-        runner,
-        f"repos/{target.github_slug}/pulls?head={owner}:{ONBOARDING_BRANCH}&state=open",
-        jq=".[0].html_url // empty",
-        allow_failure=True,
-    ).stdout.strip()
-    if existing:
-        return sha, existing
     created = _gh_api(
         runner,
         f"repos/{target.github_slug}/pulls",
@@ -374,12 +437,14 @@ def prepare_target(
         )
 
     action = _ensure_checkout(target, workspace, command_runner)
-    if _checkout_existing_scaffold(workspace, target, command_runner):
+    open_pr = _open_onboarding_pr(target, command_runner)
+    if open_pr:
         return PrepareResult(
             target,
             workspace,
-            "onboarding-branch-exists",
+            "onboarding-pr-open",
             ScaffoldResult(ScaffoldState.SCAFFOLDED),
+            pull_request_url=open_pr,
         )
 
     _prepare_base_branch(workspace, command_runner)

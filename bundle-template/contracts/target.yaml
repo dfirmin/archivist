@@ -1,9 +1,34 @@
-# Contract index — the one file every archivist target ships.
-# Declare only the contracts your pipelines use; `archivist validate .` says what is missing.
-# Copy shapes from the engine's examples/ (examples/warehouse is a full business-view setup).
+# Contract index — the one file archivist requires. It names this target, the engine release it
+# runs on, its pipelines, and where each contract lives (paths relative to contracts/).
+#
+# The starter contracts below are generic and valid, so the full pipeline runs as soon as
+# documents land in references/inbox/documents/. Replace them with your own; worked examples
+# of every contract kind are in examples/ at the repository root (documentation only).
+# Check your changes with:  archivist validate . --pipeline full
 version: 1
 slug: {{slug}}
 name: {{name}}
 # The engine release this target runs on. Upgrade by changing it in a pull request.
 engine: {{engine}}
-contracts: {}
+
+# Optional: choose or define pipelines from engine agents
+# (author, enricher, verifier, gap-agent, scorer). Without these, the engine's `full` runs.
+# default_pipeline: full
+# pipelines:
+#   summarize: [author, verifier]
+
+contracts:
+  concept-types: concept-types.yaml   # what kinds of document exist, where they live
+  structures: structures/             # the sections each kind of document has
+  intake: intake.yaml                 # how inbox documents are scoped, grouped and classified
+  gap-kinds: gap-kinds.yaml           # what counts as a gap (needed by gap-agent, scorer)
+  scoring: scoring.yaml               # how gaps become okfx_confidence (needed by scorer)
+  # catalog: catalog.yaml             # optional: index.md grouping (default: by concept type)
+  # publishing: publishing.yaml       # optional: gap issue title and labels
+
+# Optional: your own reference data, read by agents through the target-contracts skill.
+# reference:
+#   owners:
+#     path: reference/owners.yaml
+#     description: Who owns which documents.
+#     guidance: Look up the owner by team name; never invent an email.

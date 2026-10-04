@@ -1,0 +1,22 @@
+# Gap kinds: what the gap-agent fleet checks on each concept (one agent per kind).
+version: 1
+kinds:
+  - id: missing_section
+    applies_to: [knowledge-article]
+    definition: A required section has no substantive content.
+    origins: [author, documentation]
+    context: [the article body, the cited sources]
+    detection:
+      - A required author-owned section is absent, or holds only an "Awaiting source material" stub
+      - Placeholder-owned sections are never a missing section
+    priority: medium
+  - id: undefined_acronym
+    applies_to: [knowledge-article]
+    definition: An acronym is used without being expanded.
+    origins: [author, documentation]
+    context: [the article body, the cited sources]
+    detection:
+      - The body uses an acronym that no cited source expands
+      - A cited source expands it but the article leaves it unexpanded (origin author)
+      - An ordinary word in capitals is not an acronym
+    priority: low

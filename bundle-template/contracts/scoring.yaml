@@ -1,0 +1,22 @@
+# Scoring: how the scorer turns okfx_gaps into okfx_confidence.
+version: 1
+scale: {min: 0.0, max: 1.0, precision: 2}
+no_gaps: 1.0
+bands:
+  - min: 0.9
+    max: 0.99
+    meaning: Substantive throughout; only minor gaps.
+  - min: 0.7
+    max: 0.89
+    meaning: Mostly complete; several minor gaps or one notable gap.
+  - min: 0.5
+    max: 0.69
+    meaning: Thin or missing sections.
+  - min: 0.0
+    max: 0.49
+    meaning: Skeletal.
+priority_weight:
+  low: minor
+  medium: notable
+  high: major
+guidance: Score from okfx_gaps only; every penalty must map to a listed gap.

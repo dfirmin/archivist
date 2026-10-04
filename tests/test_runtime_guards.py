@@ -50,15 +50,40 @@ def test_bare_zero_groups_is_malformed_and_listed_groups_win() -> None:
     assert planned_groups(miscounted, "intake-planner") == 2
 
 
-def test_scaffold_writes_the_minimum_and_validation_names_what_is_missing(tmp_path: Path) -> None:
-    target = Target("acme", "Acme Docs", "d", "https://github.com/example-org/acme", "docs", "active", False)
-    result = scaffold_workspace(tmp_path / "acme", target, engine="v0.1.0")
-    assert "contracts/target.yaml" in result.written
+TARGET = Target("acme", "Acme Docs", "d", "https://github.com/example-org/acme", "docs", "active", False)
+
+
+def test_fresh_scaffold_is_a_runnable_target_with_examples(tmp_path: Path) -> None:
     workspace = tmp_path / "acme"
-    assert detect_scaffold_state(workspace, target) is ScaffoldState.SCAFFOLDED
-    assert "slug: acme" in (workspace / "contracts/target.yaml").read_text(encoding="utf-8")
-    with pytest.raises(ContractError, match=r"concept-types \(needed by author"):
-        resolve_run(workspace, engine=ENGINE)
+    result = scaffold_workspace(workspace, TARGET, engine="v0.1.0")
+    assert detect_scaffold_state(workspace, TARGET) is ScaffoldState.SCAFFOLDED
+    assert {"contracts/target.yaml", "contracts/structures/article.yaml", "examples/README.md"} <= set(result.written)
+    assert (workspace / "examples/warehouse/contracts/target.yaml").is_file()
+    assert (workspace / "examples/minimal/contracts/structures/policy-summary.yaml").is_file()
+    run = resolve_run(workspace, engine=ENGINE, pipeline="full")  # every requirement is declared
+    assert run.roster.stages == ("author", "enricher", "verifier", "gap-agent", "scorer")
+    assert scaffold_workspace(workspace, TARGET, engine="v0.1.0").written == ()  # idempotent
+
+
+def test_scaffold_completes_an_index_that_declares_nothing(tmp_path: Path) -> None:
+    """A pre-starter scaffold (empty contracts, no pin) is upgraded in place."""
+    workspace = tmp_path / "acme"
+    scaffold_workspace(workspace, TARGET, engine="v0.1.0")
+    (workspace / "contracts/target.yaml").write_text("version: 1\nslug: acme\ncontracts: {}\n", encoding="utf-8")
+    result = scaffold_workspace(workspace, TARGET, engine="v0.1.0")
+    assert "contracts/target.yaml" in result.written
+    resolve_run(workspace, engine=ENGINE, pipeline="full")
+
+
+def test_scaffold_only_pins_an_index_the_target_has_written(tmp_path: Path) -> None:
+    workspace = tmp_path / "acme"
+    scaffold_workspace(workspace, TARGET, engine="v0.1.0")
+    own = "version: 1\nslug: acme\ncontracts:\n  concept-types: concept-types.yaml\n"
+    (workspace / "contracts/target.yaml").write_text(own, encoding="utf-8")
+    result = scaffold_workspace(workspace, TARGET, engine="v0.1.0")
+    assert result.written == ("contracts/target.yaml (engine pin added)",)
+    text = (workspace / "contracts/target.yaml").read_text(encoding="utf-8")
+    assert text == "version: 1\nslug: acme\nengine: v0.1.0\ncontracts:\n  concept-types: concept-types.yaml\n"
 
 
 def test_scaffold_refuses_a_foreign_repo(tmp_path: Path) -> None:

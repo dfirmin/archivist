@@ -1,0 +1,15 @@
+# Structure: the sections an article has, in order (## headings). Each section has an owner:
+# author (default), enricher (filled by an enrichment method), or placeholder (fixed text).
+id: article
+description: "A general article: what it is, the details, and what is still unknown."
+sections:
+  - heading: Summary
+    description: Two or three sentences on what the topic is and why it matters.
+  - heading: Details
+    description: The substance, as the sources state it.
+  - heading: Key Terms
+    required: false
+    description: Terms the sources define.
+  - heading: Open Questions
+    owner: placeholder
+    placeholder: "*[Questions for the owner are collected here during review.]*"

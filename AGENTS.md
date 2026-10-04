@@ -52,7 +52,8 @@ agents/          engine agents (<name>.md) and profile.yaml (team, requires, dis
 skills/          engine skills (<name>/SKILL.md), one concept each
 schemas/contracts/  JSON Schema per built-in contract kind
 src/archivist/   Python: contracts, profile, engine, run plan, runner, record-gap, CLI
-bundle-template/ what prepare-target seeds into an empty target (minimal contracts/target.yaml)
+bundle-template/ what prepare-target seeds: OKF root files, a pinned contracts/target.yaml and
+                 generic starter contracts (the engine's examples/ are copied in as reference)
 examples/        example targets: warehouse (full business-view setup), minimal (author + verify)
 tests/           offline pytest for the deterministic code
 docs/adr/        decisions, especially every deterministic step

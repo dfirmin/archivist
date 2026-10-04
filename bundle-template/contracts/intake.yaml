@@ -1,0 +1,11 @@
+# Intake: how inbox documents become articles. Prose fields are rules the agents apply.
+version: 1
+concept_type: knowledge-article
+scope: Every document in the inbox is in scope.
+grouping: Each document is its own article, unless documents say they are parts of one topic.
+naming: The topic name from the document title, as a short title-case phrase.
+classes:
+  - id: document
+    description: Any source document.
+    mode: create
+    sections: all

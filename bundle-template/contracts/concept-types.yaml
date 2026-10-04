@@ -1,0 +1,15 @@
+# Concept types: every kind of document this bundle holds. Starter: one generic article.
+# `type` is the exact OKF type string. Fields beyond OKF's own must start with okfx_.
+version: 1
+concept_types:
+  knowledge-article:
+    type: Knowledge Article
+    description: One topic explained from the documents that describe it.
+    authored: true                       # the author may create these from inbox documents
+    structures: [article]
+    path: "knowledge/articles/{title}.md"
+    tags: [article]
+    fields:
+      okfx_owner:
+        description: The team or person the source names as owner, if any.
+        from: the source document body; leave unset when it names none

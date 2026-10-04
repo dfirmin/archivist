@@ -9,7 +9,8 @@ allowed-tools: Bash, Read, Grep, Glob
 ---
 
 The target owns the *what*; you apply it. Contracts are read-only: never edit anything under
-`contracts/`. A contract states rules in fields and in prose (`guidance`, `scope`,
+`contracts/`. `examples/` at the repository root holds reference copies of other targets'
+contracts for the people writing this one: never read it as this target's contracts. A contract states rules in fields and in prose (`guidance`, `scope`,
 `grouping`, `naming`, `structure_rule`, `from` …). Prose in a contract is binding the same
 way a field is.
 

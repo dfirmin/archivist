@@ -186,6 +186,12 @@ my-knowledge/
 | `scoring` | scorer | none |
 | `catalog`, `publishing` | never | index grouped by type; issue title `{title} — {kind}` |
 
+`prepare-target` seeds a new target with a generic, valid starter set (one `knowledge-article`
+concept type, an `article` structure, intake, two gap kinds and scoring), so the full pipeline
+runs immediately, plus reference copies of both example targets under `examples/`. Replace the
+starters with your own contracts. Re-running `prepare-target` on an existing target opens an
+onboarding PR with anything missing (it never overwrites contracts you have declared).
+
 A minimal index:
 
 ```yaml
