@@ -52,7 +52,7 @@ def test_bare_zero_groups_is_malformed_and_listed_groups_win() -> None:
 
 def test_scaffold_writes_the_minimum_and_validation_names_what_is_missing(tmp_path: Path) -> None:
     target = Target("acme", "Acme Docs", "d", "https://github.com/example-org/acme", "docs", "active", False)
-    result = scaffold_workspace(tmp_path / "acme", target)
+    result = scaffold_workspace(tmp_path / "acme", target, engine="v0.1.0")
     assert "contracts/target.yaml" in result.written
     workspace = tmp_path / "acme"
     assert detect_scaffold_state(workspace, target) is ScaffoldState.SCAFFOLDED
@@ -96,7 +96,7 @@ def test_prepare_target_uses_git_and_rest_only(tmp_path: Path) -> None:
     )
     runner = FakeRunner()
     result = prepare_target(target_slug="kb", workspace=tmp_path / "kb", registry_path=registry,
-                            runner=runner, environ={"ARCHIVIST_PUBLISHER": "1"})
+                            runner=runner, environ={"ARCHIVIST_PUBLISHER": "1"}, engine="v0.1.0")
     assert result.action == "published" and result.pull_request_url == "https://github.com/o/r/pull/1"
     gh = [c for c in runner.calls if c[0] == "gh"]
     assert all(c[1] == "api" for c in gh), gh  # no GraphQL-backed gh subcommands

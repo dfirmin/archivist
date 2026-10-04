@@ -145,7 +145,9 @@ def install_commands(pin: str, src: Path, venv: Path, repo: str) -> list[list[st
     return [
         *clone,
         [sys.executable, "-m", "venv", str(venv)],
-        [str(venv / "bin" / "python"), "-m", "pip", "install", "--quiet", str(src)],
+        # Editable: the engine reads agents/, skills/ and schemas/ from its source tree at
+        # runtime, which a regular wheel install would leave behind.
+        [str(venv / "bin" / "python"), "-m", "pip", "install", "--quiet", "-e", str(src)],
     ]
 
 

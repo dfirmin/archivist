@@ -60,7 +60,7 @@ def test_install_commands_for_tag_and_commit(tmp_path: Path) -> None:
     assert tag[0] == ["git", "clone", "--depth", "1", "--branch", "v0.1.0", "https://x/e", str(tmp_path / "src")]
     sha = install_commands(SHA, tmp_path / "src", tmp_path / "venv", "https://x/e")
     assert sha[1] == ["git", "-C", str(tmp_path / "src"), "checkout", SHA]
-    assert sha[-1][-1] == str(tmp_path / "src")  # pip installs the checkout
+    assert sha[-1][-2:] == ["-e", str(tmp_path / "src")]  # editable: agents/ and skills/ stay in place
 
 
 def test_engine_flag_is_not_passed_to_the_pinned_engine() -> None:
@@ -68,10 +68,10 @@ def test_engine_flag_is_not_passed_to_the_pinned_engine() -> None:
     assert strip_engine_flag(argv) == ["run-conductor", "/w", "--skip-publish"]
 
 
-def test_scaffold_pins_the_creating_engine(tmp_path: Path) -> None:
+def test_scaffold_writes_the_pin(tmp_path: Path) -> None:
     target = Target("kb", "KB", "d", "https://github.com/o/kb", "docs", "active", False)
-    scaffold_workspace(tmp_path / "kb", target)
-    assert read_pin(tmp_path / "kb") == running_version()
+    scaffold_workspace(tmp_path / "kb", target, engine="v1.2.3")
+    assert read_pin(tmp_path / "kb") == "v1.2.3"
 
 
 def test_scaffold_refuses_a_development_pin(tmp_path: Path) -> None:
