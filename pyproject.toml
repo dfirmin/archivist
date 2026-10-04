@@ -8,6 +8,8 @@ version = "0.1.0"
 description = "Contract-driven document engine: engine-owned Claude Code agents author OKF bundles from target-owned contracts"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "jsonschema>=4.26.0",
     "pyyaml>=6.0",

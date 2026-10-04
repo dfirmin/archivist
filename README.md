@@ -5,6 +5,7 @@ agents that author, enrich, verify, gap-check and score knowledge documents in a
 following rules that the repository itself defines.
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 ![Output](https://img.shields.io/badge/output-OKF%20v0.2-purple)
 ![Status](https://img.shields.io/badge/status-early%20development-orange)
 
@@ -266,4 +267,4 @@ live runs on this engine.
 
 ## License
 
-No license has been chosen yet. Until one is added, all rights are reserved by the author.
+Released under the [MIT License](LICENSE).
