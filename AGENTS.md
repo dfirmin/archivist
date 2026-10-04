@@ -37,11 +37,11 @@ engine runs many targets without engine changes.
    refuses a target with `agents/`, `contracts/agents/` or `contracts/skills/`.
 6. **Targets are pinned to an engine release.** `engine:` in `contracts/target.yaml` decides
    which engine runs a target; `archivist.engines` enforces it before any target command. A
-   change that alters what contracts mean or what agents produce ships in a new release; never
-   retag. Releases happen only when the owner asks: bump `version` in `pyproject.toml` and
-   `__init__.py` to the release and push to `main`; the `release-tag` workflow tests and tags
-   `vX.Y.Z` (never create tags by hand from a session). Then move `main` to the next `.devN`. Contract schema changes must stay readable by the release that
-   introduced them: a target only moves when its pin moves.
+   change that alters what contracts mean or what agents produce reaches a target only through a
+   release and an upgrade PR (`prepare-target --upgrade`). Versions come from git tags; never
+   type a version number. Releases happen only when the owner asks, through the **release**
+   workflow; never create or move tags from a session. Contract schema changes must stay
+   readable by the release that introduced them. See [`docs/releasing.md`](docs/releasing.md).
 7. **OKF is the output standard.** Use OKF's own frontmatter fields where OKF defines one
    (`type`, `title`, `description`, `tags`, `sources`, `generated`, `verified`, `status` …).
    Every other field starts with `okfx_`; validation enforces it. The engine owns `okfx_gaps`
@@ -96,13 +96,31 @@ login, local dev) or `inherit` (the installed Claude Code's own auth, untouched)
 variables anywhere else, and never assume a gateway. A change to the runner or auth is proven
 live in both `anthropic-api` and `gateway-key` mode. Offline tests need no auth.
 
-## Tests
+## Git workflow
 
-Test the deterministic code, and only that: auth resolution, contract loading and cross-checks,
-profile and roster resolution, the run plan, `record-gap` (locking, YAML), the dispatch check, the scaffold.
-One test per guardrail behaviour; no tests that restate a prompt, count lines in a skill, or
-mock an agent's judgement. When you add a guardrail, add the test that shows it refusing bad
-input. `examples/` targets double as fixtures: keep them valid.
+Every change goes on a feature branch and into `main` by pull request; the `tests` workflow
+must be green. `main` is unreleased code; a release is a tag the **release** workflow creates
+when the owner asks ([`docs/releasing.md`](docs/releasing.md)).
+
+## Testing
+
+**Read [`docs/testing.md`](docs/testing.md) before testing anything.** It covers the offline
+tests, test targets and source documents, how to run unreleased code against a target
+(`--engine current`, `--engine <sha>`, `prepare-target --upgrade <sha>`), the full live-test
+sequence (`load-target`, `validate`, `run-conductor`, `check-concept`, publish, re-run),
+upgrade checks and what to do before a release.
+
+The short version:
+
+- **Offline tests** cover the deterministic code, and only that: auth resolution, contract
+  loading and cross-checks, profile and roster resolution, the run plan, engine pinning and
+  versions, scaffold and upgrade, `record-gap` (locking, YAML), `check-concept`, the dispatch
+  check. One test per guardrail behaviour; no tests that restate a prompt, count lines in a
+  skill, or mock an agent's judgement. When you add a guardrail, add the test that shows it
+  refusing bad input. `examples/` targets double as fixtures: keep them valid.
+- **Live tests** run on a test target (never a team's real repo) with a mix of messy and
+  well-structured documents from more than one subject area.
+- **Unreleased code** is tested by commit SHA or `--engine current`; never by a version number.
 
 ## Live proof
 

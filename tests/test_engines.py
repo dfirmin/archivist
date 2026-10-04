@@ -2,33 +2,41 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
 
-from archivist import __version__
 from archivist.contracts import load_contracts
 from archivist.engines import (
     PINNED_ENV,
     EngineVersionError,
     decide,
     install_commands,
+    is_release,
     read_pin,
-    running_version,
+    scaffold_pin,
     strip_engine_flag,
+    version_from_describe,
 )
 from archivist.errors import ContractError
 from archivist.targets import Target
 from archivist.workspace import scaffold_workspace
-from conftest import REPO, edit_yaml
+from conftest import edit_yaml
 
 OTHER = "v9.9.9"
 SHA = "a" * 40
+HERE = "v1.2.3"
+
+
+@pytest.fixture(autouse=True)
+def released_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run every pinning test as engine v1.2.3, whatever commit the test suite is on."""
+    monkeypatch.setattr("archivist.engines.running_version", lambda: HERE)
+    monkeypatch.setattr("archivist.engines.running_commit", lambda: None)
 
 
 def test_matching_pin_runs_here() -> None:
-    assert decide(running_version(), environ={}).action == "run"
+    assert decide(HERE, environ={}).action == "run"
 
 
 def test_different_pin_hands_over() -> None:
@@ -37,7 +45,7 @@ def test_different_pin_hands_over() -> None:
 
 
 def test_override_wins_and_current_means_this_engine() -> None:
-    assert decide(running_version(), override=OTHER, environ={}).action == "delegate"
+    assert decide(HERE, override=OTHER, environ={}).action == "delegate"
     assert decide(OTHER, override="current", environ={}).action == "run"
 
 
@@ -50,9 +58,9 @@ def test_missing_or_malformed_pin_is_refused() -> None:
 
 def test_handed_over_process_runs_the_version_it_was_given() -> None:
     # The parent chose this engine (pin or override); the child must not re-decide from the pin.
-    assert decide(OTHER, environ={PINNED_ENV: running_version()}).action == "run"
+    assert decide(OTHER, environ={PINNED_ENV: HERE}).action == "run"
     with pytest.raises(EngineVersionError, match="handed over to engine v9.9.9"):
-        decide(running_version(), environ={PINNED_ENV: OTHER})
+        decide(HERE, environ={PINNED_ENV: OTHER})
 
 
 def test_install_commands_for_tag_and_commit(tmp_path: Path) -> None:
@@ -89,7 +97,11 @@ def test_contract_index_requires_a_pin(minimal: Path) -> None:
         load_contracts(minimal)
 
 
-def test_package_version_matches_pyproject() -> None:
-    """The release identity (v + __version__) must equal the version that gets tagged."""
-    pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
-    assert re.search(r'^version = "([^"]+)"', pyproject, re.M).group(1) == __version__
+def test_only_a_clean_tagged_commit_is_a_release() -> None:
+    """Versions come from git: untagged or modified code can never claim a release pin."""
+    assert version_from_describe("v0.4.0-0-gabc1234\n") == "v0.4.0"
+    assert version_from_describe("v0.4.0-3-gabc1234") == "v0.4.1.dev3+gabc1234"
+    assert version_from_describe("v0.4.0-0-gabc1234-dirty") == "v0.4.1.dev0+gabc1234.dirty"
+    assert is_release("v0.4.0") and not is_release("v0.4.1.dev3+gabc1234")
+    with pytest.raises(EngineVersionError, match="development build"):
+        scaffold_pin("v0.4.1.dev3")

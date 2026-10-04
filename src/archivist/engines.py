@@ -44,25 +44,57 @@ class EngineVersionError(ArchivistError):
     """The pinned engine cannot be resolved, installed or trusted."""
 
 
+def version_from_describe(described: str) -> str | None:
+    """The release identity for ``git describe --tags --long --dirty`` output.
+
+    ``v0.4.0-0-gabc1234`` (on the tag, clean) is the release ``v0.4.0``. Anything else, commits
+    after a tag or uncommitted changes, is a development version that can never equal a pin:
+    ``v0.4.0-3-gabc1234`` → ``v0.4.1.dev3+gabc1234``.
+    """
+    match = re.fullmatch(r"(v\d+\.\d+\.\d+(?:-rc\.\d+)?)-(\d+)-g([0-9a-f]+)(-dirty)?", described.strip())
+    if not match:
+        return None
+    tag, distance, sha, dirty = match.groups()
+    if distance == "0" and not dirty:
+        return tag
+    major, minor, patch = re.match(r"v(\d+)\.(\d+)\.(\d+)", tag).groups()
+    local = f"g{sha}" + (".dirty" if dirty else "")
+    return f"v{major}.{minor}.{int(patch) + 1}.dev{distance}+{local}"
+
+
 def running_version() -> str:
-    """This engine's release identity: ``v`` + the package version."""
+    """This engine's identity: ``v`` + its version, read live from git when it runs from a checkout.
+
+    Live, because the version an editable install recorded goes stale as soon as the checkout
+    moves; git always knows whether this exact code is a tagged release. Without a checkout (a
+    wheel or a Docker image) the version recorded at build time is the answer.
+    """
+    root = Path(__file__).resolve().parents[2]
+    if (root / ".git").exists():
+        result = subprocess.run(
+            ["git", "-C", str(root), "describe", "--tags", "--long", "--dirty", "--match", "v[0-9]*"],
+            capture_output=True, text=True,
+        )
+        version = version_from_describe(result.stdout) if result.returncode == 0 else None
+        if version:
+            return version
     return f"v{__version__}"
 
 
 def is_release(version: str) -> bool:
     """A tag a target can pin: vX.Y.Z (optionally -rc.N), never a .dev build."""
-    return bool(PIN_PATTERN.fullmatch(version)) and "dev" not in version
+    return bool(re.fullmatch(r"v\d+\.\d+\.\d+(?:-rc\.\d+)?", version))
 
 
 def scaffold_pin(requested: str | None) -> str:
     """The pin prepare-target writes: the requested release, else this engine if it is a release."""
     pin = (requested or running_version()).strip()
-    if not PIN_PATTERN.fullmatch(pin):
+    if requested and not PIN_PATTERN.fullmatch(pin):
         raise EngineVersionError(f"engine pin {pin!r} must be a release tag (v1.2.3) or a full commit SHA")
-    if pin.startswith("v") and not is_release(pin):
+    if not PIN_PATTERN.fullmatch(pin) or (pin.startswith("v") and not is_release(pin)):
         raise EngineVersionError(
-            f"this engine is a development build ({pin}); a target must pin a tagged release. "
-            "Pass --engine vX.Y.Z"
+            f"{pin} is a development build, not a release; pin a release tag (vX.Y.Z) or, to test "
+            "unreleased code, a full commit SHA (docs/testing.md)"
         )
     return pin
 

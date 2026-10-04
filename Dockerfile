@@ -46,8 +46,13 @@ COPY docker ./docker
 
 RUN chmod +x docker/entrypoint.sh docker/claude_token_cache.sh
 
+# The build context has no .git, so the engine's version cannot come from git tags here: it is
+# a development version (0.0.0.dev0) unless a release image passes --build-arg
+# ARCHIVIST_VERSION=X.Y.Z from a checkout of tag vX.Y.Z. A development image hands pinned
+# targets to their pinned release; `--engine current` runs the image's own code.
+ARG ARCHIVIST_VERSION=
 RUN pip install --upgrade pip \
-    && pip install -e ".[dev]" \
+    && SETUPTOOLS_SCM_PRETEND_VERSION_FOR_ARCHIVIST="${ARCHIVIST_VERSION:-0.0.0.dev0}" pip install -e ".[dev]" \
     && chmod +x tests/run.sh tests/smoke-claude.sh scripts/*.sh
 
 RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser \

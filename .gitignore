@@ -21,3 +21,5 @@ __pycache__/
 .venv/
 .pytest_cache/
 .DS_Store
+src/archivist/_version.py
+*.egg-info/
