@@ -31,11 +31,17 @@ GROUP_LIMIT="${GROUP_LIMIT:-0}"
 PIPELINE="${PIPELINE:-}"
 
 COMPOSE=(-f docker-compose.yml -f docker-compose.github.yml)
-if [[ "${CLAUDE_AUTH_MODE:-}" == "local-claude" ]]; then
+# Auth mode: the shell wins, then .env, then the default (gateway-key).
+AUTH_MODE="${CLAUDE_AUTH_MODE:-}"
+if [[ -z "$AUTH_MODE" && -f .env ]]; then
+  AUTH_MODE="$(sed -n 's/^CLAUDE_AUTH_MODE=//p' .env | tr -d "\"'" | tail -1)"
+fi
+AUTH_MODE="${AUTH_MODE:-gateway-key}"
+if [[ "$AUTH_MODE" == "local-claude" ]]; then
   COMPOSE+=(-f docker-compose.local-claude.yml)
 fi
 
-RUN_ARGS=()
+RUN_ARGS=(-e "CLAUDE_AUTH_MODE=${AUTH_MODE}")
 if [[ -n "${RUN_BRANCH:-}" ]]; then
   RUN_ARGS+=(-e "RUN_BRANCH=${RUN_BRANCH}")
 fi

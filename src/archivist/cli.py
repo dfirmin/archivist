@@ -12,7 +12,7 @@ from archivist.claude_runner import (
     run_conductor_agent,
     run_smoke_agent,
 )
-from archivist.config import ConfigError, resolve_litellm_config
+from archivist.config import resolve_auth
 from archivist.engine import resolve_run
 from archivist.errors import ArchivistError
 from archivist.load_target import load_target
@@ -27,11 +27,11 @@ def _fail(err: Exception) -> int:
 
 def _config_check(_args: argparse.Namespace) -> int:
     try:
-        config = resolve_litellm_config()
-    except ConfigError as err:
+        auth = resolve_auth()
+    except ArchivistError as err:
         return _fail(err)
-    print(f"gateway   {config.anthropic_base_url}")
-    print(f"model     {config.model}")
+    print(auth.describe())
+    print(f"model     {auth.model or 'Claude Code default (agents set their own)'}")
     print("PASS  configuration resolved")
     return 0
 
@@ -148,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="archivist", description="Contract-driven document engine")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    commands.add_parser("config-check", help="Verify gateway configuration").set_defaults(func=_config_check)
+    commands.add_parser("config-check", help="Verify Claude Code auth configuration (any CLAUDE_AUTH_MODE)").set_defaults(func=_config_check)
 
     smoke = commands.add_parser("smoke-agent", help="Prove claude -p answers and can spawn a sub-agent (live)")
     smoke.add_argument("-p", "--prompt", default=DEFAULT_PROMPT)

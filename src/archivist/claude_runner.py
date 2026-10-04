@@ -25,14 +25,7 @@ from pathlib import Path
 from typing import Sequence
 
 from archivist.agents import engine_agents_root, parse_agent, write_agent_definitions
-from archivist.config import (
-    LOCAL_CLAUDE_AUTH,
-    ConfigError,
-    LiteLLMConfig,
-    resolve_agent_model,
-    resolve_claude_auth_mode,
-    resolve_litellm_config,
-)
+from archivist.config import ConfigError, resolve_auth
 from archivist.dispatch_check import check_entry_stage_ran, planned_groups, planner_gave_up
 from archivist.engine import Engine, ResolvedRun, load_engine, resolve_run
 from archivist.errors import ArchivistError, DefinitionError
@@ -57,44 +50,15 @@ AGENTS_DIR_REL = Path(".claude") / "agents"
 # --------------------------------------------------------------------------- auth / env
 
 
-def _prepare_env(
-    base_env: dict[str, str],
-    config: LiteLLMConfig | None = None,
-) -> tuple[dict[str, str], str]:
-    """Configure Claude Code for the gateway or the operator's own login."""
-    env = dict(base_env)
-    mode = resolve_claude_auth_mode(env)
-    if mode == LOCAL_CLAUDE_AUTH:
-        model = resolve_agent_model(env)
-    else:
-        resolved = config or resolve_litellm_config(environ=env)
-        model = resolved.model
-        env["ANTHROPIC_API_KEY"] = resolved.anthropic_api_key
-        env["ANTHROPIC_BASE_URL"] = resolved.anthropic_base_url
-
-    env["ANTHROPIC_MODEL"] = model
-    env["ACT_CLAUDE_MODEL"] = model
-    env.setdefault("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1")
-    return env, model
-
-
-def _resolve_run_env(
-    base_env: dict[str, str],
-) -> tuple[dict[str, str], str] | None:
-    """Print the auth line and return (env, default model); None after printing a failure."""
-    mode = resolve_claude_auth_mode(base_env)
-    config: LiteLLMConfig | None = None
+def _resolve_run_env(base_env: dict[str, str]) -> tuple[dict[str, str], str | None] | None:
+    """Print the auth line and return (env for claude, default model); None after a failure."""
     try:
-        if mode == LOCAL_CLAUDE_AUTH:
-            resolve_agent_model(base_env)
-            print("auth      local Claude Code (apiKeyHelper)")
-        else:
-            config = resolve_litellm_config(environ=base_env)
-            print(f"gateway   {config.anthropic_base_url}")
-        return _prepare_env(base_env, config)
+        auth = resolve_auth(base_env)
     except ConfigError as err:
         print(f"FAIL  {err}", file=sys.stderr)
         return None
+    print(auth.describe())
+    return auth.apply(base_env), auth.model
 
 
 # ----------------------------------------------------------------------- workspace load
@@ -145,7 +109,7 @@ def prepare_agent_workspace(
 
 def build_claude_argv(
     *,
-    model: str,
+    model: str | None,
     agent: str | None = None,
     system_prompt: str | None = None,
 ) -> list[str]:
@@ -162,8 +126,7 @@ def build_claude_argv(
         "--output-format",
         "stream-json",
         "--verbose",
-        "--model",
-        model,
+        *(["--model", model] if model else []),
         "--permission-mode",
         "bypassPermissions",
     ]
@@ -255,12 +218,12 @@ def launch_claude(
 def run_claude_smoke(
     prompt: str,
     *,
-    model: str,
+    model: str | None,
     env: dict[str, str],
 ) -> subprocess.CompletedProcess[str]:
     """Call Claude Code directly, with no skills or sub-agents, to prove auth and model."""
     return subprocess.run(
-        ["claude", "-p", prompt, "--model", model, "--output-format", "text"],
+        ["claude", "-p", prompt, *(["--model", model] if model else []), "--output-format", "text"],
         env=env,
         capture_output=True,
         text=True,
@@ -288,7 +251,7 @@ def run_smoke_agent(
         return 1
     env, default_model = resolved
     model = smoke.model or default_model
-    print(f"model     {model}")
+    print(f"model     {model or 'Claude Code default'}")
     print(f"agent     {agent_path}")
     print("sandbox   none (Docker boundary)")
     print(f"prompt    {prompt!r}\n")
@@ -298,8 +261,8 @@ def run_smoke_agent(
         combined = claude.stdout + claude.stderr
         if "Claude Code is not enabled" in combined:
             print(
-                "FAIL  gateway denied the Claude Code client; this is an "
-                "access-control policy on the gateway.",
+                "FAIL  the gateway denied the Claude Code client (a gateway access policy); "
+                "try CLAUDE_AUTH_MODE=anthropic-api with ANTHROPIC_API_KEY to rule out the gateway.",
                 file=sys.stderr,
             )
         else:
@@ -464,7 +427,7 @@ def run_conductor_agent(
     kickoff = kickoff_for(limit=inbox_limit, continue_branch=False)
     print(f"workspace {workspace}")
     print(f"target    {run.contracts.slug}")
-    print(f"model     {model}")
+    print(f"model     {model or 'Claude Code default'}")
     print(f"pipeline  {roster.pipeline}: {', '.join(roster.stages)}")
     print(f"roster    {', '.join(roster.spawnable)}")
     print(f"contracts {', '.join(sorted(run.contracts.declared)) or 'none'}")

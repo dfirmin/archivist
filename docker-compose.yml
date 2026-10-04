@@ -13,10 +13,9 @@ services:
     env_file:
       - path: .env
         required: false
+    # Auth comes from .env (CLAUDE_AUTH_MODE and its variables); nothing here assumes a gateway.
     environment:
-      CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: "1"
       DOCKER_CONTAINER: "1"
-      ANTHROPIC_BASE_URL: "https://litellm.example.com"
       CHILD_SESSION_TRANSCRIPT_DIR: "/out/transcripts"
     volumes:
       # Target clones and agent cwd — visible on the host (./out on the host).

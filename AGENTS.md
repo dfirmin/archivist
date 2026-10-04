@@ -78,15 +78,19 @@ Everything runs **inside Docker**; use the wrappers. Prompts and skills use cont
 ./tests/run.sh                                   # offline pytest
 ./scripts/docker-run.sh validate /workspace/<target>
 ./scripts/publisher-run.sh load-target --target <slug> /workspace/<slug>
-CLAUDE_AUTH_MODE=local-claude ./scripts/run-conductor.sh
+./scripts/run-conductor.sh
 ```
 
-Live runs use `CLAUDE_AUTH_MODE=local-claude`. Offline tests need no auth.
+Model access is `CLAUDE_AUTH_MODE` in `.env`: `anthropic-api` (direct, `ANTHROPIC_API_KEY`),
+`gateway-key` (LiteLLM or another Anthropic-compatible gateway) or `local-claude` (your own
+login, local dev). All of it goes through `archivist.config.resolve_auth`; never read auth
+variables anywhere else, and never assume a gateway. A change to the runner or auth is proven
+live in both `anthropic-api` and `gateway-key` mode. Offline tests need no auth.
 
 ## Tests
 
-Test the deterministic code, and only that: contract loading and cross-checks, profile and
-roster resolution, the run plan, `record-gap` (locking, YAML), the dispatch check, the scaffold.
+Test the deterministic code, and only that: auth resolution, contract loading and cross-checks,
+profile and roster resolution, the run plan, `record-gap` (locking, YAML), the dispatch check, the scaffold.
 One test per guardrail behaviour; no tests that restate a prompt, count lines in a skill, or
 mock an agent's judgement. When you add a guardrail, add the test that shows it refusing bad
 input. `examples/` targets double as fixtures: keep them valid.

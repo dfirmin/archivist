@@ -97,7 +97,8 @@ Judgement stays with the agents. Python only validates, prepares and launches.
 
 - [Docker](https://docs.docker.com/get-docker/), the only runtime (on macOS, `colima start`
   if the daemon is down)
-- Access to Claude Code through a LiteLLM gateway key, or your own Claude Code login
+- Model access, either an [Anthropic API key](https://console.anthropic.com/) or an
+  Anthropic-compatible gateway such as LiteLLM
 - A [`gh`](https://cli.github.com/) login on the host for publishing runs
 
 ### 1. Clone and configure
@@ -105,7 +106,7 @@ Judgement stays with the agents. Python only validates, prepares and launches.
 ```bash
 git clone https://github.com/dfirmin/archivist.git
 cd archivist
-cp .env.example .env        # fill in the gateway values, or use CLAUDE_AUTH_MODE=local-claude
+cp .env.example .env        # pick CLAUDE_AUTH_MODE and fill in its variables
 ```
 
 ### 2. Run the offline tests
@@ -124,7 +125,7 @@ cp examples/warehouse/references/inbox/documents/*.md out/workspace/sample/refer
 ./scripts/docker-run.sh validate /workspace/sample --pipeline full
 ./scripts/docker-run.sh prepare-workspace /workspace/sample   # inspect .claude/ and the run plan
 
-CLAUDE_AUTH_MODE=local-claude SKIP_PUBLISH=1 \
+SKIP_PUBLISH=1 \
   INBOX_FILE=references/inbox/documents/catalog-custcase-essential-information.md \
   ./scripts/run-conductor.sh
 ```
@@ -145,13 +146,12 @@ All commands run inside the container through the wrappers in `scripts/`.
 | `archivist record-gap <concept> --kind K …` | Write one gap verdict (used by gap-agents) |
 | `archivist smoke-agent` | Prove headless Claude Code can spawn a sub-agent (live) |
 
-Common conductor runs:
+Common conductor runs (auth comes from `.env`):
 
 ```bash
-CLAUDE_AUTH_MODE=local-claude ./scripts/run-conductor.sh                          # whole inbox, publish
-CLAUDE_AUTH_MODE=local-claude INBOX_LIMIT=1 SKIP_PUBLISH=1 ./scripts/run-conductor.sh
-CLAUDE_AUTH_MODE=local-claude PIPELINE=gaps SKIP_PUBLISH=1 \
-  CONCEPT_FILE='knowledge/…/overview.md' ./scripts/run-conductor.sh               # existing concept only
+./scripts/run-conductor.sh                                                        # whole inbox, publish
+INBOX_LIMIT=1 SKIP_PUBLISH=1 ./scripts/run-conductor.sh
+PIPELINE=gaps SKIP_PUBLISH=1 CONCEPT_FILE='knowledge/…/overview.md' ./scripts/run-conductor.sh
 ```
 
 `SKIP_PUBLISH=1` leaves git alone. Trusted git operations (`load-target`, remote
@@ -208,14 +208,34 @@ Schemas for every contract kind are in [`schemas/contracts/`](schemas/contracts/
 
 ## Configuration
 
-Environment variables (see [`.env.example`](.env.example)):
+### Model access
+
+Set `CLAUDE_AUTH_MODE` in `.env` (see [`.env.example`](.env.example)):
+
+| Mode | Talks to | Needs |
+|---|---|---|
+| `anthropic-api` | the Anthropic API directly (`api.anthropic.com`) | `ANTHROPIC_API_KEY` |
+| `gateway-key` (default) | a LiteLLM or other Anthropic-compatible gateway | `LITELLM_API_BASE`, `LITELLM_API_KEY`, `LITELLM_MODEL` |
+| `local-claude` | whatever your own Claude Code login uses (local dev) | a host `~/.claude-code-auth` apiKeyHelper, `ACT_CLAUDE_MODEL` |
+
+```bash
+# Direct Anthropic API
+CLAUDE_AUTH_MODE=anthropic-api
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+In `anthropic-api` mode Archivist removes any gateway URL, bearer token or beta-header
+stripping from the environment before starting Claude Code, so a leftover gateway setting can't
+silently reroute the run. Gateway mode strips pre-release beta headers, which many gateways
+reject. Each agent pins its own model in `agents/*.md`; `ACT_CLAUDE_MODEL` sets the session
+default. Run `./scripts/docker-run.sh config-check` to see which endpoint a run will use.
+
+### Other variables
 
 | Variable | Purpose |
 |---|---|
-| `CLAUDE_AUTH_MODE` | `gateway-key` (default) or `local-claude` (mounts your `~/.claude-code-auth`) |
-| `LITELLM_API_BASE`, `LITELLM_API_KEY` | Gateway URL and key for `gateway-key` mode |
-| `LITELLM_MODEL` / `ACT_CLAUDE_MODEL` | Default model id; agents may set their own |
-| `ANTHROPIC_BASE_URL` | Gateway or local proxy endpoint for Claude Code |
+| `ACT_CLAUDE_MODEL` | Default session model (optional in `anthropic-api` mode) |
+| `ANTHROPIC_BASE_URL` | Gateway mode only: a local proxy in front of the gateway |
 | `GITHUB_TOKEN` | Used by the conductor for publishing (or the mounted `gh` login) |
 
 `run-conductor.sh` also reads `TARGET_SLUG`, `WORKSPACE`, `PIPELINE`, `INBOX_FILE`,

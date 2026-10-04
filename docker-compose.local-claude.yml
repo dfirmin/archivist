@@ -13,7 +13,7 @@ services:
     environment:
       CLAUDE_AUTH_MODE: "local-claude"
       # Gateway URL that the SSO token authenticates against (matches the
-      # host Claude Code install's ANTHROPIC_BASE_URL). Overrides the base test URL.
+      # host Claude Code install's ANTHROPIC_BASE_URL).
       ANTHROPIC_BASE_URL: "https://litellm.example.com"
     volumes:
       # Host apiKeyHelper toolchain -> container HOME. Read-write so it can refresh

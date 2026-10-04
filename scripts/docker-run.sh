@@ -4,8 +4,8 @@
 #   ./scripts/docker-run.sh config-check
 #   ./scripts/docker-run.sh smoke-agent      # claude -p + sub-agent spawn
 #
-# Opt-in: run agents through your own Claude Code access (see README):
-#   CLAUDE_AUTH_MODE=local-claude ./scripts/docker-run.sh smoke-agent
+# Auth comes from CLAUDE_AUTH_MODE (shell, else .env). For example:
+#   CLAUDE_AUTH_MODE=anthropic-api ./scripts/docker-run.sh smoke-agent
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,9 +19,15 @@ if [[ $# -eq 0 ]]; then
 fi
 
 COMPOSE=(-f docker-compose.yml)
-if [[ "${CLAUDE_AUTH_MODE:-}" == "local-claude" ]]; then
+# Auth mode: the shell wins, then .env, then the default (gateway-key).
+AUTH_MODE="${CLAUDE_AUTH_MODE:-}"
+if [[ -z "$AUTH_MODE" && -f .env ]]; then
+  AUTH_MODE="$(sed -n 's/^CLAUDE_AUTH_MODE=//p' .env | tr -d "\"'" | tail -1)"
+fi
+AUTH_MODE="${AUTH_MODE:-gateway-key}"
+if [[ "$AUTH_MODE" == "local-claude" ]]; then
   COMPOSE+=(-f docker-compose.local-claude.yml)
 fi
 
 docker compose "${COMPOSE[@]}" build worker
-exec docker compose "${COMPOSE[@]}" run --rm worker archivist "$@"
+exec docker compose "${COMPOSE[@]}" run --rm -e "CLAUDE_AUTH_MODE=${AUTH_MODE}" worker archivist "$@"

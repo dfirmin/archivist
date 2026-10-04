@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Container entrypoint — wire Claude Code auth per CLAUDE_AUTH_MODE.
 #
-#   gateway-key (default): borrowed/static LITELLM_API_KEY -> ANTHROPIC_API_KEY,
+#   gateway-key (default): LITELLM_API_KEY -> ANTHROPIC_API_KEY against the gateway URL,
 #                          container-local settings.json (no apiKeyHelper).
+#   anthropic-api:         ANTHROPIC_API_KEY straight to api.anthropic.com; any gateway
+#                          URL, bearer token or beta stripping is removed.
 #   local-claude:          defer to the operator's own Claude Code auth — a mounted
 #                          ~/.claude-code-auth apiKeyHelper (enterprise SSO -> LiteLLM).
+# archivist itself re-applies the same rules to every claude process it starts
+# (archivist.config.resolve_auth), so this script only sets up settings.json.
 set -euo pipefail
 
 # Target clones live on the /workspace bind mount, whose files carry the host
@@ -38,13 +42,29 @@ if [[ -n "${ACT_CLAUDE_MODEL:-}" ]]; then
   export ANTHROPIC_MODEL="${ANTHROPIC_MODEL:-$ACT_CLAUDE_MODEL}"
 fi
 
-export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS="${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS:-1}"
 export DOCKER_CONTAINER="${DOCKER_CONTAINER:-1}"
 
 CLAUDE_DIR="${HOME}/.claude"
 mkdir -p "$CLAUDE_DIR"
 
-if [[ "$AUTH_MODE" == "local-claude" ]]; then
+if [[ "$AUTH_MODE" == "anthropic-api" ]]; then
+  # Direct Anthropic API: the key is used as-is; nothing may redirect it to a gateway.
+  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    echo "ERROR: CLAUDE_AUTH_MODE=anthropic-api needs ANTHROPIC_API_KEY (set it in .env)." >&2
+    exit 1
+  fi
+  unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS || true
+  python3 -c "
+import json, os
+settings = {'permissions': {'allow': [], 'deny': []}}
+model = os.environ.get('ACT_CLAUDE_MODEL') or os.environ.get('ANTHROPIC_MODEL', '')
+if model:
+    settings['model'] = model
+with open(os.path.join(os.environ['HOME'], '.claude', 'settings.json'), 'w') as f:
+    json.dump(settings, f, indent=2)
+"
+elif [[ "$AUTH_MODE" == "local-claude" ]]; then
+  export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS="${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS:-1}"
   # Authenticate from the operator's own Claude Code login. Claude Code invokes the
   # local apiKeyHelper itself whenever it needs a token, so credentials refresh
   # during long-running sessions.
@@ -84,9 +104,10 @@ with open(os.path.join(os.environ['HOME'], '.claude', 'settings.json'), 'w') as 
     json.dump(settings, f, indent=2)
 "
 else
-  # gateway-key (default) — existing behavior.
-  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    export ANTHROPIC_API_KEY="${LITELLM_API_KEY:-}"
+  # gateway-key (default): the gateway key is the API key, sent to the gateway URL.
+  export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS="${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS:-1}"
+  if [[ -n "${LITELLM_API_KEY:-}" ]]; then
+    export ANTHROPIC_API_KEY="${LITELLM_API_KEY}"
   fi
   if [[ -z "${ANTHROPIC_BASE_URL:-}" ]] && [[ -n "${LITELLM_API_BASE:-}" ]]; then
     export ANTHROPIC_BASE_URL="${LITELLM_API_BASE}"

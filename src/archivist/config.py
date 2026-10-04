@@ -1,10 +1,38 @@
-"""Configuration and secret resolution from the environment."""
+"""How headless Claude Code authenticates, resolved from the environment and ``.env``.
+
+Three modes, chosen with ``CLAUDE_AUTH_MODE``:
+
+- ``gateway-key`` (default) — a LiteLLM (or other Anthropic-compatible) gateway.
+  ``LITELLM_API_KEY`` is sent as ``ANTHROPIC_API_KEY`` to ``LITELLM_API_BASE``. Pre-release
+  beta headers are stripped, because gateways commonly reject them.
+- ``anthropic-api`` — the Anthropic API directly. ``ANTHROPIC_API_KEY`` is sent to the
+  default endpoint (api.anthropic.com). Any gateway URL, bearer token or beta stripping
+  inherited from the environment is removed, so a stray gateway setting cannot hijack the run.
+- ``local-claude`` — the operator's own Claude Code login (an ``apiKeyHelper``), local dev only.
+
+``resolve_auth`` returns what to set and what to remove; ``AuthConfig.apply`` produces the
+environment for the ``claude`` process. Secrets never appear in ``describe()``.
+"""
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from archivist.errors import ArchivistError
+
+GATEWAY_KEY_AUTH = "gateway-key"
+ANTHROPIC_API_AUTH = "anthropic-api"
+LOCAL_CLAUDE_AUTH = "local-claude"
+AUTH_MODES = (GATEWAY_KEY_AUTH, ANTHROPIC_API_AUTH, LOCAL_CLAUDE_AUTH)
+CLAUDE_AUTH_MODE_ENV = "CLAUDE_AUTH_MODE"
+ANTHROPIC_API_BASE = "https://api.anthropic.com"
+_GATEWAY_ONLY = ("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+
+
+class ConfigError(ArchivistError):
+    """Required configuration is absent or invalid."""
 
 
 def _strip_quotes(value: str) -> str:
@@ -29,112 +57,83 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
-# Claude Code auth modes (how headless Claude Code authenticates to the gateway).
-GATEWAY_KEY_AUTH = "gateway-key"  # default: static LITELLM_API_KEY as ANTHROPIC_API_KEY
-LOCAL_CLAUDE_AUTH = "local-claude"  # opt-in: defer to the operator's own Claude Code auth
-_VALID_AUTH_MODES: frozenset[str] = frozenset({GATEWAY_KEY_AUTH, LOCAL_CLAUDE_AUTH})
-CLAUDE_AUTH_MODE_ENV = "CLAUDE_AUTH_MODE"
-
-
-def resolve_claude_auth_mode(
-    environ: dict[str, str] | None = None,
-    *,
-    dotenv_path: Path | None = None,
-) -> str:
-    """Resolve the Claude Code auth mode; defaults to ``gateway-key``.
-
-    ``gateway-key`` (default): the borrowed/static ``LITELLM_API_KEY`` is passed to Claude
-    Code as ``ANTHROPIC_API_KEY`` against the gateway base URL. ``local-claude`` is an
-    opt-in that defers to the operator's own Claude Code CLI auth (the enterprise
-    ``apiKeyHelper``), so no long-lived engine key is required.
-    """
-    env = dict(environ if environ is not None else os.environ)
-    dotenv = load_dotenv(dotenv_path or _repo_root() / ".env")
-    raw = _strip_quotes(env.get(CLAUDE_AUTH_MODE_ENV) or dotenv.get(CLAUDE_AUTH_MODE_ENV, ""))
-    mode = raw or GATEWAY_KEY_AUTH
-    if mode not in _VALID_AUTH_MODES:
-        expected = ", ".join(sorted(_VALID_AUTH_MODES))
-        raise ConfigError(f"invalid {CLAUDE_AUTH_MODE_ENV}: {raw!r} (expected one of: {expected})")
-    return mode
-
-
-def resolve_agent_model(
-    environ: dict[str, str] | None = None,
-    *,
-    dotenv_path: Path | None = None,
-) -> str:
-    """Resolve just the model id (for ``local-claude`` mode, where no gateway key is needed)."""
-    env = dict(environ if environ is not None else os.environ)
-    dotenv = load_dotenv(dotenv_path or _repo_root() / ".env")
-
-    def get(name: str) -> str:
-        return _strip_quotes(env.get(name) or dotenv.get(name, ""))
-
-    model = get("ACT_CLAUDE_MODEL") or get("LITELLM_MODEL") or get("ANTHROPIC_MODEL")
-    if not model:
-        raise ConfigError(
-            "missing configuration: set ACT_CLAUDE_MODEL (or LITELLM_MODEL) "
-            "to a model id your Claude Code access can reach"
-        )
-    return model
-
-
 @dataclass(frozen=True)
-class LiteLLMConfig:
-    """LiteLLM gateway settings resolved at call time from env refs."""
+class AuthConfig:
+    mode: str
+    model: str | None
+    endpoint: str
+    set_env: dict[str, str] = field(default_factory=dict)
+    unset_env: tuple[str, ...] = ()
 
-    api_base: str
-    api_key: str
-    model: str
+    def apply(self, base_env: dict[str, str]) -> dict[str, str]:
+        env = {k: v for k, v in base_env.items() if k not in self.unset_env}
+        env.update(self.set_env)
+        return env
 
-    @property
-    def anthropic_base_url(self) -> str:
-        return self.api_base.rstrip("/")
-
-    @property
-    def anthropic_api_key(self) -> str:
-        return self.api_key
-
-
-_REQUIRED_FIELDS: tuple[tuple[str, str], ...] = (
-    ("api_base", "LITELLM_API_BASE"),
-    ("api_key", "LITELLM_API_KEY"),
-    ("model", "LITELLM_MODEL"),
-)
+    def describe(self) -> str:
+        return f"auth      {self.mode} → {self.endpoint}"
 
 
-def resolve_litellm_config(
-    *,
+def resolve_auth(
     environ: dict[str, str] | None = None,
+    *,
     dotenv_path: Path | None = None,
-) -> LiteLLMConfig:
-    """Resolve LiteLLM config; fail with every missing variable named at once."""
-    env = dict(environ or os.environ)
+) -> AuthConfig:
+    """Resolve the auth mode and its settings; name every missing variable at once."""
+    env = dict(environ if environ is not None else os.environ)
     dotenv = load_dotenv(dotenv_path or _repo_root() / ".env")
 
     def get(name: str) -> str:
         return _strip_quotes(env.get(name) or dotenv.get(name, ""))
 
-    values = {
-        "api_base": get("LITELLM_API_BASE") or get("ANTHROPIC_BASE_URL"),
-        "api_key": get("LITELLM_API_KEY") or get("ANTHROPIC_API_KEY"),
-        "model": get("LITELLM_MODEL") or get("ACT_CLAUDE_MODEL"),
-    }
-    missing = []
-    if not values["api_base"]:
-        missing.append("LITELLM_API_BASE or ANTHROPIC_BASE_URL")
-    if not values["api_key"]:
-        missing.append("LITELLM_API_KEY or ANTHROPIC_API_KEY")
-    if not values["model"]:
-        missing.append("LITELLM_MODEL or ACT_CLAUDE_MODEL")
+    raw_mode = get(CLAUDE_AUTH_MODE_ENV)
+    mode = raw_mode or GATEWAY_KEY_AUTH
+    if mode not in AUTH_MODES:
+        raise ConfigError(
+            f"invalid {CLAUDE_AUTH_MODE_ENV}: {raw_mode!r} (expected one of: {', '.join(AUTH_MODES)})"
+        )
+
+    if mode == ANTHROPIC_API_AUTH:
+        key = get("ANTHROPIC_API_KEY")
+        if not key:
+            raise ConfigError("missing configuration: ANTHROPIC_API_KEY (anthropic-api mode)")
+        model = get("ACT_CLAUDE_MODEL") or get("ANTHROPIC_MODEL") or None
+        set_env = {"ANTHROPIC_API_KEY": key}
+        if model:
+            set_env |= {"ANTHROPIC_MODEL": model, "ACT_CLAUDE_MODEL": model}
+        return AuthConfig(mode, model, ANTHROPIC_API_BASE, set_env, _GATEWAY_ONLY)
+
+    if mode == LOCAL_CLAUDE_AUTH:
+        model = get("ACT_CLAUDE_MODEL") or get("LITELLM_MODEL") or get("ANTHROPIC_MODEL")
+        if not model:
+            raise ConfigError("missing configuration: ACT_CLAUDE_MODEL (local-claude mode)")
+        set_env = {
+            "ANTHROPIC_MODEL": model,
+            "ACT_CLAUDE_MODEL": model,
+            "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+        }
+        endpoint = get("ANTHROPIC_BASE_URL") or get("LITELLM_API_BASE") or "apiKeyHelper default"
+        return AuthConfig(mode, model, endpoint, set_env, ("ANTHROPIC_API_KEY",))
+
+    base = get("LITELLM_API_BASE") or get("ANTHROPIC_BASE_URL")
+    key = get("LITELLM_API_KEY")
+    model = get("LITELLM_MODEL") or get("ACT_CLAUDE_MODEL")
+    missing = [
+        name
+        for name, value in (
+            ("LITELLM_API_BASE (or ANTHROPIC_BASE_URL)", base),
+            ("LITELLM_API_KEY", key),
+            ("LITELLM_MODEL (or ACT_CLAUDE_MODEL)", model),
+        )
+        if not value
+    ]
     if missing:
-        raise ConfigError(f"missing configuration: {', '.join(missing)}")
-    return LiteLLMConfig(
-        api_base=values["api_base"],
-        api_key=values["api_key"],
-        model=values["model"],
-    )
-
-
-class ConfigError(Exception):
-    """Raised when required configuration is absent or invalid."""
+        raise ConfigError(f"missing configuration (gateway-key mode): {', '.join(missing)}")
+    set_env = {
+        "ANTHROPIC_API_KEY": key,
+        "ANTHROPIC_BASE_URL": base.rstrip("/"),
+        "ANTHROPIC_MODEL": model,
+        "ACT_CLAUDE_MODEL": model,
+        "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
+    }
+    return AuthConfig(mode, model, base.rstrip("/"), set_env, ("ANTHROPIC_AUTH_TOKEN",))

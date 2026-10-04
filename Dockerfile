@@ -16,7 +16,6 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PATH=/usr/local/bin:$PATH \
     NODE_PATH=/usr/local/lib/node_modules \
-    CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 \
     DOCKER_CONTAINER=1
 
 RUN apt-get update \
