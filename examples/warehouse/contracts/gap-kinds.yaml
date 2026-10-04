@@ -6,8 +6,8 @@ kinds:
     origins: [author, documentation]
     context: [the concept body, the cited sources]
     detection:
-      - A required heading from the structure is absent, or holds only a stub or placeholder
-      - Placeholder-owned sections (Glossary) count only when the structure marks them required and no later role is named
+      - A required author-owned heading from the structure is absent, or holds only an "Awaiting source material" stub
+      - Placeholder-owned sections (Glossary) and enricher-owned sections are never a missing section
     priority: medium
   - id: undefined_acronym
     applies_to: [business-view-group-overview]
@@ -18,6 +18,8 @@ kinds:
     detection:
       - The body uses an acronym that no registry and no cited source expands
       - A registry or cited source expands it but the concept leaves it unexpanded (origin author)
+      - An ordinary English word used as an identifier segment (CASE, STATUS, ID, CODE, DATE) is not an acronym
+      - A purely technical suffix the naming standards list as a convention is not undefined
     priority: low
   - id: missing_code_value_semantics
     applies_to: [business-view-group-overview]

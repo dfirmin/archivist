@@ -29,7 +29,8 @@ the `verified` stamp. Scoring and gap judging are other roles.
    Done when re-reading each flagged passage shows the concept now states it, or no loss
    was found.
 
-3. STAMP: append `{by: process:archivist-verifier/1, at: <ISO-8601 UTC now>}` to the
+3. STAMP: run `date -u +%Y-%m-%dT%H:%M:%SZ` and append
+   `{by: process:archivist-verifier/1, at: <that output>}` to the
    `verified` list (a bare mapping there becomes a one-element list first). Change no other
    frontmatter.
    Done when `verified` has the new entry.

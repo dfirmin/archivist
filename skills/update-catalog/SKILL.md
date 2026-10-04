@@ -17,7 +17,8 @@ Paths are written from the bundle root with spaces percent-encoded (`Travel Poli
 
 ## 1. `log.md` — change history
 
-Newest date first, `## YYYY-MM-DD` headings (`date -u +%Y-%m-%d`). Keep the `#` title;
+Newest date first, `## YYYY-MM-DD` headings in UTC: run `date -u +%Y-%m-%d`, the same clock
+as the concepts' `generated` stamps. Keep the `#` title;
 insert today's heading under it when missing; leave older dates untouched. One bullet per
 concept this group created or changed, newest first:
 
@@ -27,7 +28,8 @@ concept this group created or changed, newest first:
 * **Update**: [Travel Policy](/knowledge/policies/Travel%20Policy.md) — added the exceptions from the 2026 amendment.
 ```
 
-**Creation** when the concept was new this run, **Update** otherwise. Apply the contract's
+Each link path starts with `/` (bundle-root absolute), as above. **Creation** when the concept
+was new this run, **Update** otherwise. Apply the contract's
 `log.guidance` when present. Scores and gap counts live on the concept, not here.
 
 Done when each concept from this group has exactly one new bullet under today.

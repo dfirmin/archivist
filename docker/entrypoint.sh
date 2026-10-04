@@ -47,7 +47,10 @@ export DOCKER_CONTAINER="${DOCKER_CONTAINER:-1}"
 CLAUDE_DIR="${HOME}/.claude"
 mkdir -p "$CLAUDE_DIR"
 
-if [[ "$AUTH_MODE" == "anthropic-api" ]]; then
+if [[ "$AUTH_MODE" == "inherit" ]]; then
+  # Use whatever the container already provides (e.g. CLAUDE_CODE_OAUTH_TOKEN); touch nothing.
+  :
+elif [[ "$AUTH_MODE" == "anthropic-api" ]]; then
   # Direct Anthropic API: the key is used as-is; nothing may redirect it to a gateway.
   if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
     echo "ERROR: CLAUDE_AUTH_MODE=anthropic-api needs ANTHROPIC_API_KEY (set it in .env)." >&2

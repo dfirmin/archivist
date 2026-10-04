@@ -33,9 +33,10 @@ in the run plan (`.claude/archivist/run-plan.yaml`), are the how. Load them with
 3. For each section, in structure order: load its method's skills, resolve its inputs from
    `input_field` (and `fallback_field`) through the `lookup` reference per
    **target-contracts**, and do what the method skills say. Write the section in its place
-   in the structure, replacing any earlier version of that section whole.
-   Done when the section holds grounded content or is recorded empty with a reason (an empty
-   section is not written).
+   in the structure (adding any missing parent heading), replacing any earlier version of
+   that section whole.
+   Done when the section holds grounded content or is recorded empty with a reason. An empty
+   section is not written, and neither is a parent heading it alone would have needed.
 
 4. CHECK: frontmatter and every heading outside your sections equal what step 1 recorded;
    any temporary clone or file is removed.

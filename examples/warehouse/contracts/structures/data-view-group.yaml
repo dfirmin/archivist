@@ -4,7 +4,7 @@ sections:
   - Overview
   - Source
   - heading: Data Sources & Ingestion Route
-    description: Where the data comes from; names at least one registered source system.
+    description: Where the data comes from and how it is loaded, as the source document states it. Registry coverage is checked by the unregistered_source_system gap, not written here.
   - Data Granularity
   - heading: Business Rules & Usage Notes
     subsections:

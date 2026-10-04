@@ -64,6 +64,13 @@ def test_local_claude_defers_to_the_api_key_helper(tmp_path: Path) -> None:
     assert "ANTHROPIC_API_KEY" not in out
 
 
+def test_inherit_changes_nothing(tmp_path: Path) -> None:
+    env = {"CLAUDE_AUTH_MODE": "inherit", "ANTHROPIC_BASE_URL": "https://host-proxy", "CLAUDE_CODE_OAUTH_TOKEN": "t"}
+    auth = resolve(env, tmp_path)
+    assert auth.apply(env) == env
+    assert auth.model is None
+
+
 def test_unknown_mode_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(ConfigError, match="expected one of: gateway-key, anthropic-api, local-claude"):
+    with pytest.raises(ConfigError, match="expected one of: gateway-key, anthropic-api, local-claude, inherit"):
         resolve({"CLAUDE_AUTH_MODE": "bedrock"}, tmp_path)

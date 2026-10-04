@@ -82,8 +82,8 @@ Everything runs **inside Docker**; use the wrappers. Prompts and skills use cont
 ```
 
 Model access is `CLAUDE_AUTH_MODE` in `.env`: `anthropic-api` (direct, `ANTHROPIC_API_KEY`),
-`gateway-key` (LiteLLM or another Anthropic-compatible gateway) or `local-claude` (your own
-login, local dev). All of it goes through `archivist.config.resolve_auth`; never read auth
+`gateway-key` (LiteLLM or another Anthropic-compatible gateway), `local-claude` (your own
+login, local dev) or `inherit` (the installed Claude Code's own auth, untouched). All of it goes through `archivist.config.resolve_auth`; never read auth
 variables anywhere else, and never assume a gateway. A change to the runner or auth is proven
 live in both `anthropic-api` and `gateway-key` mode. Offline tests need no auth.
 

@@ -1,6 +1,6 @@
 """How headless Claude Code authenticates, resolved from the environment and ``.env``.
 
-Three modes, chosen with ``CLAUDE_AUTH_MODE``:
+Four modes, chosen with ``CLAUDE_AUTH_MODE``:
 
 - ``gateway-key`` (default) — a LiteLLM (or other Anthropic-compatible) gateway.
   ``LITELLM_API_KEY`` is sent as ``ANTHROPIC_API_KEY`` to ``LITELLM_API_BASE``. Pre-release
@@ -9,6 +9,9 @@ Three modes, chosen with ``CLAUDE_AUTH_MODE``:
   default endpoint (api.anthropic.com). Any gateway URL, bearer token or beta stripping
   inherited from the environment is removed, so a stray gateway setting cannot hijack the run.
 - ``local-claude`` — the operator's own Claude Code login (an ``apiKeyHelper``), local dev only.
+- ``inherit`` — whatever auth the installed Claude Code already has (a ``/login``, a
+  ``CLAUDE_CODE_OAUTH_TOKEN`` from ``claude setup-token``, or a host-provided session such
+  as a Claude Code cloud environment). Archivist changes nothing.
 
 ``resolve_auth`` returns what to set and what to remove; ``AuthConfig.apply`` produces the
 environment for the ``claude`` process. Secrets never appear in ``describe()``.
@@ -25,7 +28,8 @@ from archivist.errors import ArchivistError
 GATEWAY_KEY_AUTH = "gateway-key"
 ANTHROPIC_API_AUTH = "anthropic-api"
 LOCAL_CLAUDE_AUTH = "local-claude"
-AUTH_MODES = (GATEWAY_KEY_AUTH, ANTHROPIC_API_AUTH, LOCAL_CLAUDE_AUTH)
+INHERIT_AUTH = "inherit"
+AUTH_MODES = (GATEWAY_KEY_AUTH, ANTHROPIC_API_AUTH, LOCAL_CLAUDE_AUTH, INHERIT_AUTH)
 CLAUDE_AUTH_MODE_ENV = "CLAUDE_AUTH_MODE"
 ANTHROPIC_API_BASE = "https://api.anthropic.com"
 _GATEWAY_ONLY = ("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
@@ -102,6 +106,11 @@ def resolve_auth(
         if model:
             set_env |= {"ANTHROPIC_MODEL": model, "ACT_CLAUDE_MODEL": model}
         return AuthConfig(mode, model, ANTHROPIC_API_BASE, set_env, _GATEWAY_ONLY)
+
+    if mode == INHERIT_AUTH:
+        model = get("ACT_CLAUDE_MODEL") or None
+        set_env = {"ACT_CLAUDE_MODEL": model} if model else {}
+        return AuthConfig(mode, model, "Claude Code's existing auth", set_env, ())
 
     if mode == LOCAL_CLAUDE_AUTH:
         model = get("ACT_CLAUDE_MODEL") or get("LITELLM_MODEL") or get("ANTHROPIC_MODEL")

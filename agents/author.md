@@ -43,16 +43,21 @@ end. Each step uses tools until its Done when.
    Done when type, structure, path, mode and every required field value are known, or a
    required value is missing — then leave the document in the inbox with that reason.
 
-5. WRITE the concept in that mode per **document-structure**: every authored section is
-   grounded in a cited source; `owner: placeholder` sections get their placeholder text;
-   `owner: enricher` sections are left for the enricher (heading only on CREATE). ENRICH is
-   additive: existing frontmatter and body stay.
-   Done when the file exists at the path, its headings follow the structure, and each
-   authored section is source-grounded or its owned stub.
+5. WRITE the concept in that mode per **document-structure**:
+   - every body sentence states something the cited document states. Reference contracts
+     fill frontmatter fields only; no registry wording or outside context enters the body;
+   - `owner: placeholder` sections get their placeholder text verbatim;
+   - `owner: enricher` sections are not written (the enricher adds them with any parent
+     heading they need);
+   - a `required: false` section is written only when the source supports it: no stub;
+   - ENRICH is additive: existing frontmatter and body stay.
+   Done when the file exists at the path, its headings follow the structure minus the
+   enricher's, and each authored section is source-grounded or its owned stub.
 
 6. VALIDATE: frontmatter parses; `##` headings match the structure's top-level sections in
-   order; `okfx_gaps`, `okfx_confidence` and `verified` are untouched.
-   Done when all three hold.
+   order; no heading is empty except a stub or placeholder; each body sentence traces to the
+   cited document; `okfx_gaps`, `okfx_confidence` and `verified` are untouched.
+   Done when all hold; fix any that does not before going on.
 
 7. MOVE the document to `references/processed/documents/` (same file name) and add it to the
    concept's OKF `sources` list as `{resource: references/processed/documents/<file>.md,

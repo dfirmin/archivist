@@ -217,6 +217,7 @@ Set `CLAUDE_AUTH_MODE` in `.env` (see [`.env.example`](.env.example)):
 | `anthropic-api` | the Anthropic API directly (`api.anthropic.com`) | `ANTHROPIC_API_KEY` |
 | `gateway-key` (default) | a LiteLLM or other Anthropic-compatible gateway | `LITELLM_API_BASE`, `LITELLM_API_KEY`, `LITELLM_MODEL` |
 | `local-claude` | whatever your own Claude Code login uses (local dev) | a host `~/.claude-code-auth` apiKeyHelper, `ACT_CLAUDE_MODEL` |
+| `inherit` | whatever the installed Claude Code is already signed in to: a `/login`, a subscription token from `claude setup-token` (`CLAUDE_CODE_OAUTH_TOKEN`), or a Claude Code cloud session | nothing; Archivist leaves the environment alone |
 
 ```bash
 # Direct Anthropic API
@@ -278,10 +279,12 @@ target, inspected by hand. [`AGENTS.md`](AGENTS.md) lists what each agent must s
 
 ## Status and roadmap
 
-Early development. The deterministic layer is tested; the agents have not yet been proven in
-live runs on this engine.
+Early development. The deterministic layer is tested, and the full pipeline has run live on both
+example targets ([evidence](docs/live-proof/2026-10-04.md)).
 
-- [ ] Live proof on `examples/warehouse` and `examples/minimal`
+- [x] Live proof on `examples/warehouse` and `examples/minimal`
+- [ ] Live proof of publishing (branch, PR, gap issues) and of `code-logic` enrichment
+- [ ] Live proof in `anthropic-api` and `gateway-key` modes, inside Docker
 - [ ] Glossary reconciliation agent
 - [ ] CI for the offline test suite
 

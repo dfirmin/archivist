@@ -38,15 +38,22 @@ string is a section with defaults: `owner: author`, `required: true`.
 
 | Owner | CREATE / PARTIAL CREATE | ENRICH |
 |---|---|---|
-| `author` | write it from the sources when the class routes to it; otherwise a stub: `*[Awaiting source material.]*` | add what the new source supports, keep what is there |
+| `author`, required | write it from the sources when the class routes to it; otherwise a stub: `*[Awaiting source material.]*` | add what the new source supports, keep what is there |
+| `author`, `required: false` | write it only when a source supports it; never a stub, never an empty heading | add it when the new source supports it |
 | `placeholder` | the heading plus its `placeholder` text, verbatim | leave as it is |
-| `enricher` | the heading only | leave as it is |
+| `enricher` | nothing: the enricher writes it, with any parent heading it needs | leave as it is |
+
+A heading whose only children are enricher sections is written by the enricher too, so a concept
+the enricher could not enrich has no empty headings.
 
 Class routing: `sections: all` → every author section; a list → those headings; `best-fit`
 → the sections the document's content supports. PARTIAL CREATE writes every heading but
-authors only routed sections. A `required: false` section with nothing to say is omitted.
+authors only routed sections.
 
-Ground every authored sentence in a cited source and end each authored passage with
+Ground every authored sentence in a cited source document. Reference contracts supply
+frontmatter values and lookups only: their wording (a registry description, a system's
+"authoritative source" note) never becomes body text, and nothing the source does not say is
+added for context. End each authored passage with
 `*Source: [<document title>](<path under references/processed/documents/>), retrieved
 <YYYY-MM-DD>*`. Expand a term only where a source expands it; a reference-data hit is
 evidence for gap judging, not source text.
@@ -59,7 +66,8 @@ CREATE and PARTIAL CREATE write, in this order:
 - `title`, `description` (one sentence from the sources);
 - `tags` — the type's `tags`, placeholders filled, in order;
 - `status: draft`;
-- `generated: {by: archivist-author/1, at: <ISO-8601 UTC now>}`;
+- `generated: {by: archivist-author/1, at: <now>}`, where `<now>` is the output of
+  `date -u +%Y-%m-%dT%H:%M:%SZ` run at write time, never a date you type;
 - `sources` — one `{resource, title}` per cited document;
 - each `fields` entry from its `from` rule; a `required` field with no value stops the
   write (report it).
