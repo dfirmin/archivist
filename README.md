@@ -198,7 +198,7 @@ A minimal index:
 ```yaml
 version: 1
 slug: policy-notes
-engine: v0.2.0                        # the engine release this target runs on
+engine: v0.3.0                        # the engine release this target runs on
 default_pipeline: summarize
 pipelines:
   summarize: [author, verifier]       # engine agents only
@@ -229,7 +229,7 @@ until that target opts in:
 
 ```yaml
 # contracts/target.yaml
-engine: v0.2.0          # a release tag, or a full commit SHA
+engine: v0.3.0          # a release tag, or a full commit SHA
 ```
 
 - `prepare-target` writes the pin for you (the engine's own release, or `--engine vX.Y.Z`).

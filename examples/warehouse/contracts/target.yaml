@@ -1,7 +1,7 @@
 # Contract index for a sample data-warehouse knowledge target.
 # Every path is relative to contracts/. Declare only what the pipelines use.
 version: 1
-engine: v0.2.0
+engine: v0.3.0
 slug: sample
 name: Sample Data Warehouse
 description: Business-view knowledge for a sample warehouse, authored from catalog documents.

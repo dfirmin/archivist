@@ -7,7 +7,7 @@
 version: 1
 slug: team-handbook
 name: Team Handbook
-engine: v0.2.0
+engine: v0.3.0
 default_pipeline: handbook
 pipelines:
   handbook: [author, verifier, gap-agent, scorer]   # no enricher: nothing here is code-derived
