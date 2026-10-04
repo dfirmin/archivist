@@ -1,0 +1,60 @@
+# Publish knowledge/ to Confluence: one page per Markdown file, created or updated by title.
+#
+# Ad hoc: Actions tab > publish-confluence > Run workflow. It publishes the branch you run it on.
+# Set the secrets and the space first (see .github/archivist/SECRETS.md); "Dry run" needs
+# neither the secrets nor network access and only lists the pages it would write.
+#
+# Seeded once by `archivist prepare-target`. After that this file is yours: the engine never
+# overwrites it, so edit the runner section below for your network.
+name: publish-confluence
+
+on:
+  workflow_dispatch:
+    inputs:
+      space_key:
+        description: "Confluence space key. Blank uses the CONFLUENCE_SPACE_KEY repository variable."
+        required: false
+        type: string
+      parent_page_id:
+        description: "Id of the page the new pages go under. Blank uses CONFLUENCE_PARENT_PAGE_ID, or the space root if that is not set either."
+        required: false
+        type: string
+      dry_run:
+        description: "List the pages that would be written; send nothing"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-confluence
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # RUNNER (stub for the target to fill in): GitHub-hosted by default. For a self-hosted runner
+    # replace the next line, e.g.  runs-on: [self-hosted, linux, x64]
+    # The runner needs python3, pip access to the `markdown` package and outbound HTTPS to Confluence.
+    runs-on: ubuntu-latest
+    env:
+      CONFLUENCE_URL: ${{ secrets.CONFLUENCE_URL }}
+      CONFLUENCE_TOKEN: ${{ secrets.CONFLUENCE_TOKEN }}
+      CONFLUENCE_SPACE_KEY: ${{ inputs.space_key || vars.CONFLUENCE_SPACE_KEY }}
+      CONFLUENCE_PARENT_PAGE_ID: ${{ inputs.parent_page_id || vars.CONFLUENCE_PARENT_PAGE_ID }}
+      # RUNNER NETWORK (stub): behind a proxy or a private CA, set these here, for example
+      # HTTPS_PROXY: http://proxy.example.com:8080
+      # SSL_CERT_FILE: /etc/ssl/certs/corporate-ca.pem
+      # PIP_INDEX_URL: https://pypi.example.com/simple
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets and settings
+        run: python3 .github/archivist/publish.py confluence --check ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Install the Markdown converter
+        run: python3 -m pip install --quiet markdown
+
+      - name: Publish knowledge/ to Confluence
+        run: python3 .github/archivist/publish.py confluence ${{ inputs.dry_run && '--dry-run' || '' }}

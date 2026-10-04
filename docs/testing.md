@@ -47,6 +47,12 @@ shows it refusing bad input. Don't write tests that restate a prompt or mock an 
 judgement; that is what live runs are for. The `examples/` targets double as fixtures, so keep
 them valid.
 
+The publishing workflows a scaffold seeds (`bundle-template/.github/`) are covered offline: the
+script runs against local fakes of the Databricks, Confluence and Graph APIs, and a test keeps
+the workflows, `secrets.yaml` and the script's required names in agreement. Nothing offline proves
+a real destination. To try one, scaffold a test target, set that destination's secrets and
+variables, and run its workflow with **Dry run** first, then for real.
+
 ## Test targets
 
 Use a target that exists for testing, never a team's real knowledge repo:

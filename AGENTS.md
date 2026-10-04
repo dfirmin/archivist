@@ -56,6 +56,7 @@ schemas/contracts/  JSON Schema per built-in contract kind
 src/archivist/   Python: contracts, profile, engine, run plan, runner, record-gap, CLI
 bundle-template/ what prepare-target seeds: OKF root files, a pinned contracts/target.yaml and
                  generic starter contracts (the engine's examples/ are copied in as reference)
+                 and the publishing workflows in .github/ (seeded once, then the target's; ADR 0003)
 examples/        example targets: warehouse (full business-view setup), minimal (author + verify)
 tests/           offline pytest for the deterministic code
 docs/            guides: contracts, testing, releasing, authoring agents and skills
