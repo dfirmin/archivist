@@ -1,7 +1,7 @@
 ---
 name: source-code-locator
 description: >
-  Clone a source repo and find the SQL, dbt or ETL files that define named views or
+  Clones a source repo and finds the SQL, dbt or ETL files that define named views or
   tables. Use in the code-logic enrichment method, when the enricher has entity names and
   the repos that build them.
 allowed-tools: Bash, Read, Grep, Glob

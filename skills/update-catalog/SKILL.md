@@ -1,8 +1,8 @@
 ---
 name: update-catalog
 description: >
-  Update the OKF bundle-root `log.md` (one dated line per concept created or updated) and
-  rebuild the generated block of `index.md`, grouped as the target's catalog contract says.
+  Updates the OKF bundle-root `log.md` (one dated line per concept created or updated) and
+  rebuilds the generated block of `index.md`, grouped as the target's catalog contract says.
   Use once per group, after its last stage.
 allowed-tools: Bash, Read, Edit, Write, Glob, Grep
 ---

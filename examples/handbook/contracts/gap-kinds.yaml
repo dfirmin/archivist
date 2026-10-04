@@ -13,12 +13,11 @@ kinds:
     applies_to: [runbook]
     definition: An incident runbook gives no way to escalate.
     origins: [author, documentation]
-    context: [okfx_structure, Escalation, okfx_on_call, the teams reference]
-    uses: [teams]
+    context: [okfx_structure, Escalation, the cited sources]
     detection:
       - Only incident-response runbooks are judged; a runbook whose okfx_structure is routine-procedure is absent by definition
       - The Escalation section itself names no person, team or channel to contact; frontmatter alone does not count, because a responder reads the body
-      - Origin author when teams lists an on_call value for the owning team (the runbook could have said it); documentation otherwise
+      - A role (an incident commander, the on-call engineer) or a team (legal, security) named as the one to contact counts as a contact
     priority: high
   - id: missing_rollback
     applies_to: [runbook]

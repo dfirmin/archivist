@@ -1,7 +1,7 @@
 ---
 name: open-pull-request
 description: >
-  Pull request for the pushed run branch: reuse the open one or create it, and report
+  Opens the pull request for the pushed run branch, or reuses the open one, and reports
   its number and URL. Use after the branch is on origin.
 allowed-tools: Bash, Read
 ---

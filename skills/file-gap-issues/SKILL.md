@@ -1,7 +1,7 @@
 ---
 name: file-gap-issues
 description: >
-  One GitHub issue per `okfx_gaps` entry on a group's concepts, created or updated by exact
+  Files one GitHub issue per `okfx_gaps` entry on a group's concepts, created or updated by exact
   title, titled and labelled as the target's publishing contract says, linked to the run's
   pull request. Use after the PR exists.
 allowed-tools: Bash, Read

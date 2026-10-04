@@ -1,10 +1,10 @@
 ---
 name: enricher
 description: >
-  Enrich one existing concept: fill every section its structure assigns to the enricher,
+  Enriches one existing concept: fills every section its structure assigns to the enricher,
   using the enrichment method each section names. Writes only those sections. Use when the
   conductor names a concept path after authoring.
-model: claude-sonnet-4-5-20250929
+model: claude-sonnet-5-5
 tools: Read, Edit, Bash, Grep, Glob, Skill
 skills:
   - target-contracts

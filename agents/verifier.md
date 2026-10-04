@@ -1,10 +1,11 @@
 ---
 name: verifier
 description: >
-  Verify one concept against the sources it cites: restore any source content the concept
-  lost into its body, then append an OKF `verified` stamp. Use when the conductor asks to
+  Verifies one concept against the sources it cites: restores source content the concept
+  lost, reconciles conflicting values to the latest source, removes passages no cited source
+  supports, then appends an OKF `verified` stamp. Use when the conductor asks to
   verify a concept path.
-model: claude-sonnet-4-5-20250929
+model: claude-sonnet-5-5
 skills:
   - target-contracts
 ---
@@ -42,10 +43,8 @@ stamp. Scoring and gap judging are other roles.
    values.
 
 4. REMOVE **unsupported content** in author-owned sections: a sentence or detail no cited
-   source states. Typical cases: a contact, channel or name copied from reference data (a
-   registry value belongs in frontmatter, never in the body), a role or owner the source does
-   not name, a reason or context added "for clarity". Delete it, or reword the passage to what
-   the source says. If that leaves a required section empty, put back its stub
+   source states, whatever it came from: reference data (which belongs in frontmatter only),
+   inference or general knowledge. Delete it, or reword the passage to what the source says. If that leaves a required section empty, put back its stub
    `*[Awaiting source material.]*` so the gap fleet sees it.
    Done when every remaining sentence traces to a cited source passage.
 

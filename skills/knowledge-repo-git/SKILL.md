@@ -1,8 +1,8 @@
 ---
 name: knowledge-repo-git
 description: >
-  Git publish for the knowledge repo: take the run branch from current main, stage the
-  catalog paths, commit, push. Use when the kickoff says to publish.
+  Publishes the knowledge repo with git: takes the run branch from current main, stages the
+  run's output paths, commits and pushes. Use when the kickoff says to publish.
 allowed-tools: Bash, Read
 ---
 

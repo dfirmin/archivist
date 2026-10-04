@@ -1,13 +1,17 @@
 ---
 name: document-structure
 description: >
-  Turn a concept type, its structure and an intake class into a concept file: path, mode
-  (CREATE, PARTIAL CREATE, ENRICH), headings, section ownership, OKF and okfx_ frontmatter,
-  placeholders and companions. Use when writing, enriching or validating a concept.
-allowed-tools: Bash, Read, Glob, Grep
+  Turns a concept type, its structure and an intake class into a concept file: path, mode
+  (CREATE, PARTIAL CREATE, ENRICH), headings, section ownership, source grounding, OKF and
+  okfx_ frontmatter, placeholders and companions. Use when writing, enriching or validating
+  a concept.
+allowed-tools: Bash, Read, Write, Glob, Grep
 ---
 
 Read the contracts through **target-contracts**. This skill is how they combine.
+
+Contents: 1 Type and structure · 2 Path and mode · 3 Sections and grounding · 4 Frontmatter ·
+5 Companions
 
 ## 1. Type and structure
 
@@ -41,7 +45,7 @@ whose `title` matches or whose list fields overlap (for example the same entity 
 | None, and the class `mode` is `partial` | **PARTIAL CREATE** |
 | None, and the class `mode` is `enrich-only` | leave the document in the inbox: "awaiting its primary document" |
 
-## 3. Sections
+## 3. Sections and grounding
 
 A structure's `sections` are `##` headings, `subsections` one level deeper, in order. A bare
 string is a section with defaults: `owner: author`, `required: true`.
@@ -60,13 +64,19 @@ Class routing: `sections: all` → every author section; a list → those headin
 → the sections the document's content supports. PARTIAL CREATE writes every heading but
 authors only routed sections.
 
-Ground every authored sentence in a cited source document. Reference contracts supply
-frontmatter values and lookups only: their wording (a registry description, a system's
-"authoritative source" note) never becomes body text, and nothing the source does not say is
-added for context. End each authored passage with
-`*Source: [<document title>](<path under sources/processed/>), retrieved
-<YYYY-MM-DD>*`. Expand a term only where a source expands it; a reference-data hit is
-evidence for gap judging, not source text.
+**Grounding.** The body restates its sources; it adds nothing to them.
+
+| Input | May supply | Never supplies |
+|---|---|---|
+| A cited source document (this group's inbox documents; in ENRICH also the concept's existing `sources`) | body text, quoted or restated | — |
+| A reference contract (registry, owner list, glossary …) | frontmatter field values per the field's `from` rule; scope decisions | body text, a contact, name, role, channel, expansion or description |
+| Your own knowledge or "context for clarity" | nothing | anything |
+
+A section no source passage supports is an outcome, not a hole to fill: it takes its owner
+rule's empty form (stub when required, nothing when `required: false`), and the gap fleet
+reports it downstream. Expand a term only
+where a source expands it. End each authored passage with
+`*Source: [<document title>](<path under sources/processed/>), retrieved <YYYY-MM-DD>*`.
 
 ## 4. Frontmatter
 

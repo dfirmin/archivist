@@ -1,7 +1,7 @@
 ---
 name: target-contracts
 description: >
-  How to find and read the target's contracts in contracts/: the index, the built-in kinds
+  Explains how to find and read the target's contracts in contracts/: the index, the built-in kinds
   (concept-types, structures, intake, gap-kinds, scoring, catalog, publishing) and the
   target's own reference data. Use whenever a step says "per the contract" or names
   reference data such as an inventory, owner manifest, glossary or naming standards.

@@ -1,10 +1,10 @@
 ---
 name: intake-planner
 description: >
-  Group inbox documents into the units one author session handles and return the ordered
+  Groups inbox documents into the units one author session handles and returns the ordered
   queue, following the target's intake contract. Reads only, writes nothing. Use when the
   conductor takes an inbox scan rather than one named document.
-model: claude-sonnet-4-5-20250929
+model: claude-sonnet-5-5
 tools: Read, Bash, Grep, Glob
 skills:
   - target-contracts

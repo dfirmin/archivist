@@ -58,6 +58,7 @@ bundle-template/ what prepare-target seeds: OKF root files, a pinned contracts/t
                  generic starter contracts (the engine's examples/ are copied in as reference)
 examples/        example targets: warehouse (full business-view setup), minimal (author + verify)
 tests/           offline pytest for the deterministic code
+docs/            guides: contracts, testing, releasing, authoring agents and skills
 docs/adr/        decisions, especially every deterministic step
 ```
 
@@ -67,16 +68,18 @@ docs/adr/        decisions, especially every deterministic step
 |---|---|---|
 | A target behaviour | a contract field, guidance, or reference data in the target | an engine branch on a target name or domain |
 | A contract kind | a schema in `schemas/contracts/`, a loader entry and cross-checks in `contracts.py`, a row in the **target-contracts** skill, `requires`/`optional` on the agents that use it, a test, an example | a kind every target must ship |
-| An agent | `agents/<name>.md`, a profile entry with `requires` and `dispatch`, live proof | an agent tied to one target |
+| An agent | `agents/<name>.md` written per [the authoring guide](docs/authoring-agents-and-skills.md), a profile entry with `requires` and `dispatch`, live proof | an agent tied to one target |
+| A skill | `skills/<name>/SKILL.md` written per [the authoring guide](docs/authoring-agents-and-skills.md), named in the `skills` of the agents that always need it, live proof | a skill for one target or one domain |
 | A stage behaviour | the agent's `dispatch` in `profile.yaml` (the conductor reads it from the run plan) | stage names hard-coded in `conductor.md` |
 | An enrichment method | `enrichment_methods` in `profile.yaml` plus its skills; structures name it in `enrich.method` | a method that decides where its output goes (the structure does) |
 | A frontmatter field | declare it in the target's concept type with the `okfx_` prefix | a non-OKF field without the prefix |
 
-Agent and skill files: frontmatter (`name`, `description` in third person saying when to use
-it, and for agents `model` as a literal id, `tools`, `skills`), then a short prompt with numbered
-steps, each ending in **Done when**. Positive instructions. Preload a skill only if every run of
-that agent needs it. `.claude/` in a workspace is generated on every run; edit `agents/` and
-`skills/`.
+**Writing agent and skill files:** read
+[`docs/authoring-agents-and-skills.md`](docs/authoring-agents-and-skills.md) before you add or
+change anything in `agents/` or `skills/`. It holds the frontmatter rules, how to word a prompt
+for the model it pins (Sonnet/Opus 5.x versus Haiku), one place per instruction, grounding,
+and the checklist for the pull request. `.claude/` in a workspace is generated on every run;
+edit `agents/` and `skills/`.
 
 ## Runtime
 

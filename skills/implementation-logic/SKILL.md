@@ -1,8 +1,8 @@
 ---
 name: implementation-logic
 description: >
-  Extract filter predicates, join semantics, derived fields and source-system divergences
-  from SQL/ETL code and write them into the concept section the structure assigns to the
+  Extracts filter predicates, join semantics, derived fields and source-system divergences
+  from SQL/ETL code and writes them into the concept section the structure assigns to the
   code-logic method. Use after source-code-locator has mapped the entities to files.
 allowed-tools: Bash, Read, Edit
 ---
