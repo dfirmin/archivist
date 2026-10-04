@@ -37,7 +37,7 @@ disclosure.
 | [`index.md`](index.md) | Bundle map — find concepts by group |
 | [`log.md`](log.md) | Chronological change history (newest first) |
 | `knowledge/` | Authored concepts (OKF IDs are paths under here) |
-| `references/` | Source documents that concepts cite |
+| `sources/` | Source documents: `processed/` holds what concepts cite, `inbox/` what is waiting |
 | `contracts/` | The engine's specification for this bundle — not knowledge to answer from |
 
 ## Done when

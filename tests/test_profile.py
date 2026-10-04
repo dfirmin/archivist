@@ -88,9 +88,9 @@ def test_prepare_workspace_installs_engine_and_plan(warehouse: Path) -> None:
 
 
 def test_kickoff_names_plan_stages_and_publish() -> None:
-    text = build_kickoff(inbox_file="references/inbox/documents/a.md", stages=("author", "verifier"),
+    text = build_kickoff(inbox_file="sources/inbox/a.md", stages=("author", "verifier"),
                          pipeline="summarize", branch="archivist/a")
-    assert "author the inbox document `references/inbox/documents/a.md`" in text
+    assert "author the inbox document `sources/inbox/a.md`" in text
     assert "Plan: `.claude/archivist/run-plan.yaml` (pipeline `summarize`)" in text
     assert "Stages: author, verifier." in text
     assert "Publish: yes, on branch `archivist/a`." in text

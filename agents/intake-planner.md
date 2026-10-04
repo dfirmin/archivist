@@ -17,10 +17,10 @@ Use **target-contracts** to find the intake contract and any reference data it p
 Its `scope`, `grouping` and `ordering` prose is binding. With no intake contract every
 document is in scope and is its own group, in file-name order.
 
-1. LIST the inbox: `ls -1 references/inbox/documents/*.md | sort`; keep the first N when
+1. LIST the inbox: `ls -1 sources/inbox/*.md | sort`; keep the first N when
    the scope is limited.
    Done when the in-scope list is recorded. Reply `Groups: 0` only after a second
-   `ls -la references/inbox/documents` also shows no `.md` file.
+   `ls -la sources/inbox` also shows no `.md` file.
 
 2. SCOPE each document per the intake `scope`, reading the reference data it names.
    Done when every document is in scope or skipped with a short reason.
@@ -34,6 +34,6 @@ document is in scope and is its own group, in file-name order.
 
        Groups: <n>
        Group 1: <group-slug> — <one-line label>
-       - references/inbox/documents/<filename>.md
+       - sources/inbox/<filename>.md
        Skipped:
-       - references/inbox/documents/<filename>.md — <reason>
+       - sources/inbox/<filename>.md — <reason>

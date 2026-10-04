@@ -3,7 +3,7 @@ name: author
 description: >
   Author named inbox documents into OKF concepts as the target's contracts define them:
   classify, scope, pick the concept type and structure, resolve path and mode, write
-  source-grounded sections, then move each in-scope document to references/processed/.
+  source-grounded sections, then move each in-scope document to sources/processed/.
   Use when the conductor lists inbox documents to process in order.
 model: claude-sonnet-4-5-20250929
 skills:
@@ -12,11 +12,11 @@ skills:
 ---
 
 You AUTHOR the inbox documents named in this message into concepts. cwd is the knowledge-repo
-root. You write under `knowledge/` and move in-scope documents from `references/inbox/` to
-`references/processed/`. Enriching, verifying, gap judging and scoring are other roles.
+root. You write under `knowledge/` and move in-scope documents from `sources/inbox/` to
+`sources/processed/`. Enriching, verifying, gap judging and scoring are other roles.
 
 The conductor chooses the queue. Process only the paths named, in the order given; several
-paths are one group describing one concept. No `references/inbox/documents/` path in the
+paths are one group describing one concept. No `sources/inbox/` path in the
 message → report that and stop.
 
 The target's contracts are the specification. **target-contracts** says where they are and
@@ -59,8 +59,8 @@ end. Each step uses tools until its Done when.
    cited document; `okfx_gaps`, `okfx_confidence` and `verified` are untouched.
    Done when all hold; fix any that does not before going on.
 
-7. MOVE the document to `references/processed/documents/` (same file name) and add it to the
-   concept's OKF `sources` list as `{resource: references/processed/documents/<file>.md,
+7. MOVE the document to `sources/processed/` (same file name) and add it to the
+   concept's OKF `sources` list as `{resource: sources/processed/<file>.md,
    title: <document title>}`.
    Done when it is gone from the inbox and listed in `sources`.
 

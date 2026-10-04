@@ -112,7 +112,7 @@ read, and what you checked:
 
 | Role | Must prove |
 |---|---|
-| author | the path, type, tags and okfx_ fields follow the target's contracts; sections follow the structure and their owners; the document moved to `references/processed/` and is in `sources`; `okfx_gaps`, `okfx_confidence`, `verified` untouched |
+| author | the path, type, tags and okfx_ fields follow the target's contracts; sections follow the structure and their owners; the document moved to `sources/processed/` and is in `sources`; `okfx_gaps`, `okfx_confidence`, `verified` untouched |
 | enricher | only `owner: enricher` sections changed; rows cite a file at a commit; clones removed |
 | verifier | lost source content restored, cited, under existing headings; one `verified` entry appended; nothing else in frontmatter |
 | gap-agent | one kind; the write went through `record-gap`; body unchanged |

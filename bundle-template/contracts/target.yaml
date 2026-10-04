@@ -2,7 +2,7 @@
 # runs on, its pipelines, and where each contract lives (paths relative to contracts/).
 #
 # The starter contracts below are generic and valid, so the full pipeline runs as soon as
-# documents land in references/inbox/documents/. Replace them with your own; worked examples
+# documents land in sources/inbox/. Replace them with your own; worked examples
 # of every contract kind are in examples/ at the repository root (documentation only).
 # Check your changes with:  archivist validate . --pipeline full
 version: 1

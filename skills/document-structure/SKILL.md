@@ -54,7 +54,7 @@ Ground every authored sentence in a cited source document. Reference contracts s
 frontmatter values and lookups only: their wording (a registry description, a system's
 "authoritative source" note) never becomes body text, and nothing the source does not say is
 added for context. End each authored passage with
-`*Source: [<document title>](<path under references/processed/documents/>), retrieved
+`*Source: [<document title>](<path under sources/processed/>), retrieved
 <YYYY-MM-DD>*`. Expand a term only where a source expands it; a reference-data hit is
 evidence for gap judging, not source text.
 

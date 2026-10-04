@@ -6,7 +6,7 @@
 #   ./scripts/run-conductor.sh                                    # whole inbox, publish
 #   INBOX_LIMIT=1 ./scripts/run-conductor.sh                      # at most one inbox document
 #   GROUP_LIMIT=10 ./scripts/run-conductor.sh                     # at most 10 groups (a session each)
-#   INBOX_FILE=references/inbox/documents/foo.md ./scripts/run-conductor.sh
+#   INBOX_FILE=sources/inbox/foo.md ./scripts/run-conductor.sh
 #   CONCEPT_FILE='knowledge/.../overview.md' ./scripts/run-conductor.sh   # existing concept
 #   SKIP_PUBLISH=1 ./scripts/run-conductor.sh                     # no branch/commit/push/PR/issues
 #   PIPELINE=author-verify ./scripts/run-conductor.sh             # only these stages run

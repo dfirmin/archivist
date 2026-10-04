@@ -96,7 +96,7 @@ def end_artifact_state(
     ) if root.is_dir() else []
     inbox_rows: list[dict[str, Any]] = []
     for rel in _inbox_paths(workspace, inbox_files):
-        processed = rel.replace("references/inbox/", "references/processed/", 1)
+        processed = rel.replace("sources/inbox/", "sources/processed/", 1)
         moved = (workspace / processed).is_file()
         inbox_rows.append(
             {

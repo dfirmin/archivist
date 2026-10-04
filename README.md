@@ -47,7 +47,7 @@ change.
 flowchart LR
     subgraph Target repo
         C[contracts/]
-        I[references/inbox/]
+        I[sources/inbox/]
         K[knowledge/]
     end
     subgraph Engine
@@ -122,13 +122,13 @@ cp .env.example .env        # pick CLAUDE_AUTH_MODE and fill in its variables
 ```bash
 ./scripts/docker-run.sh prepare-target --target sample --local /workspace/sample   # seed the bundle
 cp -r examples/warehouse/contracts/. out/workspace/sample/contracts/                # add the example contracts
-cp examples/warehouse/references/inbox/documents/*.md out/workspace/sample/references/inbox/documents/
+cp examples/warehouse/sources/inbox/*.md out/workspace/sample/sources/inbox/
 
 ./scripts/docker-run.sh validate /workspace/sample --pipeline full
 ./scripts/docker-run.sh prepare-workspace /workspace/sample   # inspect .claude/ and the run plan
 
 SKIP_PUBLISH=1 \
-  INBOX_FILE=references/inbox/documents/catalog-custcase-essential-information.md \
+  INBOX_FILE=sources/inbox/catalog-custcase-essential-information.md \
   ./scripts/run-conductor.sh
 ```
 
@@ -174,7 +174,8 @@ my-knowledge/
 │   ├── scoring.yaml         # confidence rubric
 │   └── reference/…          # any data of your own
 ├── knowledge/               # authored concepts (concept ID = path)
-├── references/inbox/        # documents waiting to be authored
+├── sources/inbox/           # documents waiting to be authored
+├── sources/processed/       # authored documents, kept for citation
 ├── index.md  log.md         # OKF reserved files
 ```
 
@@ -197,7 +198,7 @@ A minimal index:
 ```yaml
 version: 1
 slug: policy-notes
-engine: v0.1.0                        # the engine release this target runs on
+engine: v0.2.0                        # the engine release this target runs on
 default_pipeline: summarize
 pipelines:
   summarize: [author, verifier]       # engine agents only
@@ -222,7 +223,7 @@ until that target opts in:
 
 ```yaml
 # contracts/target.yaml
-engine: v0.1.0          # a release tag, or a full commit SHA
+engine: v0.2.0          # a release tag, or a full commit SHA
 ```
 
 - `prepare-target` writes the pin for you (the engine's own release, or `--engine vX.Y.Z`).

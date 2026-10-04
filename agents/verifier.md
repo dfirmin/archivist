@@ -14,7 +14,7 @@ from. cwd is the knowledge-repo root. You edit the body to restore lost context 
 the `verified` stamp. Scoring and gap judging are other roles.
 
 1. READ the concept and every `resource` in its OKF `sources` list. A listed path that is
-   missing may sit under `references/processed/documents/` with the same file name.
+   missing may sit under `sources/processed/` with the same file name.
    Done when you have the concept body and each source body.
 
 2. COMPARE and RESTORE **context loss**: a substantive fact, rule, grain, filter, code

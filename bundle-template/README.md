@@ -44,7 +44,7 @@ need source detail.
 ├── README.md         # This file
 ├── knowledge/        # Authored OKF concepts (paths are concept IDs; layout set by contracts)
 ├── contracts/        # This target's specification for archivist (human PRs only)
-└── references/       # Source documents concepts cite
+└── sources/          # Source documents: inbox/ (waiting) and processed/ (cited)
     ├── inbox/        # Incoming inputs awaiting processing
     └── processed/    # Consumed inputs retained for citation
 ```

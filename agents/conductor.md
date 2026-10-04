@@ -27,7 +27,7 @@ Fill templates like this:
 | Placeholder | Value |
 |---|---|
 | `{group}` | the group slug from the planner (or the document's file stem) |
-| `{documents}` | one `- references/inbox/documents/<file>.md` line per document, in group order |
+| `{documents}` | one `- sources/inbox/<file>.md` line per document, in group order |
 | `{concept_path}` | the concept file, bundle-relative |
 | `{concept}` | a short slug of the concept: its directory name, or its file stem when that is not `overview` |
 | `{kind}` | a gap-kind id |

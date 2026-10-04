@@ -25,9 +25,22 @@ ENGINE_GIT_NAME = "Archivist"
 ENGINE_GIT_EMAIL = "archivist@noreply.local"
 # OKF bundle layout, engine-owned. Concept IDs are paths under knowledge/.
 KNOWLEDGE_DIR = "knowledge"
-INBOX_DIR = "references/inbox/documents"
-PROCESSED_DIR = "references/processed/documents"
+INBOX_DIR = "sources/inbox"
+PROCESSED_DIR = "sources/processed"
 _SCAFFOLD_DIRS = (KNOWLEDGE_DIR, INBOX_DIR, PROCESSED_DIR)
+# Layouts earlier engines scaffolded: (old directory, new directory). prepare-target moves
+# them, rewrites the paths that cite them, and pins the target to the engine that migrated it.
+_LEGACY_DIRS = (
+    ("references/inbox/documents", INBOX_DIR),
+    ("references/processed/documents", PROCESSED_DIR),
+)
+_LEGACY_PATHS = (  # longest first
+    ("references/inbox/documents/", "sources/inbox/"),
+    ("references/processed/documents/", "sources/processed/"),
+    ("references/inbox/", "sources/inbox/"),
+    ("references/processed/", "sources/processed/"),
+    ("`references/`", "`sources/`"),
+)
 # What makes a repo an archivist target (scaffold detection). Starter contracts and examples
 # are seeded too, but a target may replace or delete them.
 _ROOT_FILES = (
@@ -137,8 +150,10 @@ def detect_scaffold_state(workspace: Path, target: Target) -> ScaffoldState:
     if not files:
         return ScaffoldState.EMPTY
     required_files = all((workspace / relative).is_file() for relative in _ROOT_FILES)
+    legacy = dict((new, old) for old, new in _LEGACY_DIRS)
     required_dirs = all(
-        (workspace / relative).is_dir()
+        # A directory an earlier layout had under another name counts: scaffolding migrates it.
+        (workspace / relative).is_dir() or (relative in legacy and (workspace / legacy[relative]).is_dir())
         for relative in _SCAFFOLD_DIRS
     )
     if required_files and required_dirs:
@@ -166,6 +181,7 @@ def scaffold_workspace(
     written: list[str] = []
     skipped: list[str] = []
     workspace.mkdir(parents=True, exist_ok=True)
+    migrated = _migrate_legacy_layout(workspace, written)
 
     for relative in _SCAFFOLD_DIRS:
         directory = workspace / relative
@@ -210,6 +226,8 @@ def scaffold_workspace(
         for relative in _STARTER_FILES:
             write(relative, render(relative))
         write(_INDEX, render(_INDEX), replace=True)
+    elif migrated and _set_pin(index, pin):
+        written.append(f"{_INDEX} (engine pin set to {pin}: the layout changed)")
     elif _add_missing_pin(index, pin):
         written.append(f"{_INDEX} (engine pin added)")
     else:
@@ -229,6 +247,68 @@ def scaffold_workspace(
         written=tuple(written),
         skipped=tuple(skipped),
     )
+
+
+def _migrate_legacy_layout(workspace: Path, written: list[str]) -> bool:
+    """Move an earlier layout's directories to the current one and rewrite paths citing them.
+
+    Mechanical, so deterministic: files move as they are, and every Markdown file at the
+    bundle root, in okf/ and under knowledge/ has the old paths replaced (concept ``sources``
+    entries, citation lines, index/log links, the root README and AGENTS).
+    """
+    moved = False
+    for old, new in _LEGACY_DIRS:
+        source = workspace / old
+        if not source.is_dir():
+            continue
+        target = workspace / new
+        target.mkdir(parents=True, exist_ok=True)
+        for item in sorted(source.iterdir()):
+            if item.name == ".gitkeep":
+                item.unlink()
+                continue
+            destination = target / item.name
+            if destination.exists():
+                raise WorkspaceError(f"cannot migrate {old}/{item.name}: {new}/{item.name} already exists")
+            item.rename(destination)
+            written.append(f"{new}/{item.name} (moved from {old}/)")
+        source.rmdir()
+        moved = True
+    if not moved:
+        return False
+    legacy_root = workspace / "references"
+    for leftover in sorted(legacy_root.rglob("*"), reverse=True) if legacy_root.exists() else ():
+        if leftover.is_file() and leftover.name == ".gitkeep":
+            leftover.unlink()
+        elif leftover.is_dir() and not any(leftover.iterdir()):
+            leftover.rmdir()
+    if legacy_root.exists() and not any(legacy_root.iterdir()):
+        legacy_root.rmdir()
+    for path in sorted(
+        [*workspace.glob("*.md"), *workspace.glob("okf/*.md"), *workspace.glob("knowledge/**/*.md")]
+    ):
+        text = path.read_text(encoding="utf-8")
+        new_text = text
+        for old_path, new_path in _LEGACY_PATHS:
+            new_text = new_text.replace(old_path, new_path)
+        if new_text != text:
+            path.write_text(new_text, encoding="utf-8")
+            written.append(f"{path.relative_to(workspace).as_posix()} (paths updated)")
+    return True
+
+
+def _set_pin(index: Path, pin: str) -> bool:
+    """Set ``engine:`` to ``pin`` (adding it if absent). True if the file changed."""
+    text = index.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.startswith("engine:"):
+            if line.strip() == f"engine: {pin}":
+                return False
+            lines[i] = f"engine: {pin}\n"
+            index.write_text("".join(lines), encoding="utf-8")
+            return True
+    return _add_missing_pin(index, pin)
 
 
 def _declares_nothing(index: Path) -> bool:

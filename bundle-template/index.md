@@ -6,7 +6,7 @@ okf_version: "0.2"
 
 No concepts yet.
 
-## References
+## Sources
 
-- Raw inputs: `references/inbox/`
-- Consumed inputs: `references/processed/`
+- Waiting to be authored: `sources/inbox/`
+- Authored and cited: `sources/processed/`

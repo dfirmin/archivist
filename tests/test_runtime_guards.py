@@ -127,3 +127,39 @@ def test_prepare_target_uses_git_and_rest_only(tmp_path: Path) -> None:
     assert all(c[1] == "api" for c in gh), gh  # no GraphQL-backed gh subcommands
     assert ["git", "clone", "https://github.com/o/r.git", str(tmp_path / "kb")] in runner.calls
     assert any(c[:3] == ["gh", "api", "repos/o/r/pulls"] for c in gh)
+
+
+def test_scaffold_migrates_the_references_layout(tmp_path: Path) -> None:
+    """A target scaffolded with references/ moves to sources/, citations follow, pin moves."""
+    workspace = tmp_path / "acme"
+    scaffold_workspace(workspace, TARGET, engine="v0.1.0")
+    for old in ("references/inbox/documents", "references/processed/documents"):
+        (workspace / old).mkdir(parents=True)
+        (workspace / old / ".gitkeep").write_text("", encoding="utf-8")
+    (workspace / "references/processed/documents/a.md").write_text("source\n", encoding="utf-8")
+    (workspace / "references/inbox/documents/b.md").write_text("waiting\n", encoding="utf-8")
+    import shutil
+
+    shutil.rmtree(workspace / "sources")
+    concept = workspace / "knowledge/articles/A.md"
+    concept.parent.mkdir(parents=True)
+    concept.write_text("---\nsources:\n  - {resource: references/processed/documents/a.md}\n---\n"
+                       "*Source: [a](references/processed/documents/a.md)*\n", encoding="utf-8")
+    assert detect_scaffold_state(workspace, TARGET) is ScaffoldState.SCAFFOLDED
+
+    result = scaffold_workspace(workspace, TARGET, engine="v0.2.0")
+    assert not (workspace / "references").exists()
+    assert (workspace / "sources/processed/a.md").read_text(encoding="utf-8") == "source\n"
+    assert (workspace / "sources/inbox/b.md").is_file()
+    text = concept.read_text(encoding="utf-8")
+    assert "references/" not in text and text.count("sources/processed/a.md") == 2
+    assert "engine: v0.2.0" in (workspace / "contracts/target.yaml").read_text(encoding="utf-8")
+    assert any("pin set to v0.2.0" in w for w in result.written)
+
+
+def test_a_partial_repo_without_knowledge_is_refused(tmp_path: Path) -> None:
+    workspace = tmp_path / "acme"
+    scaffold_workspace(workspace, TARGET, engine="v0.1.0")
+    (workspace / "knowledge/.gitkeep").unlink()
+    (workspace / "knowledge").rmdir()
+    assert detect_scaffold_state(workspace, TARGET) is ScaffoldState.REFUSE

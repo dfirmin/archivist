@@ -28,12 +28,12 @@ agents:
         {documents}
       done_when: >-
         A concept exists for the group and each in-scope document has left the inbox for
-        references/processed/documents/. Record each concept path the author reports.
+        sources/processed/. Record each concept path the author reports.
       on_empty: >-
         The author returned without writing a concept while the documents are still in the
         inbox: retry once with description "author-{group}-retry" and this line in front of the
         same prompt: "The previous session stopped before writing. Write the concept now and
-        move each in-scope document to references/processed/documents/." A second empty return
+        move each in-scope document to sources/processed/." A second empty return
         fails the group.
       on_failure: fail-group
 

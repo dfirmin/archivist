@@ -8,8 +8,8 @@ description: How archivist lays out and stamps the OKF bundle it maintains.
 
 This repository is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format)
 v0.2 bundle and the repository root is the bundle root. Concepts live under `knowledge/`, so
-concept IDs are `knowledge/…` paths. Source documents enter through `references/inbox/` and
-are kept, once authored, under `references/processed/` for citation.
+concept IDs are `knowledge/…` paths. Source documents enter through `sources/inbox/` and
+are kept, once authored, under `sources/processed/` for citation.
 
 `contracts/` is this target's specification for the engine: which concept types exist, how
 they are structured, how inbox documents are taken in, which gaps are judged and how
@@ -34,7 +34,7 @@ tags: [data, customer-care, business-view-group-overview]
 status: draft
 generated: {by: archivist-author/1, at: 2026-10-03T16:30:00Z}
 sources:
-  - {resource: references/processed/documents/catalog-custcase-essential-information.md, title: CUSTCASE - Essential Information}
+  - {resource: sources/processed/catalog-custcase-essential-information.md, title: CUSTCASE - Essential Information}
 okfx_subject_area: customer-care
 okfx_confidence: 0.85
 ```
