@@ -181,13 +181,32 @@ def _publisher_enabled(environ: dict[str, str] | None = None) -> bool:
     return env.get(PUBLISHER_ENV) == "1"
 
 
+def _gh_api(runner: CommandRunner, path: str, *fields: str, method: str | None = None,
+            typed: tuple[str, ...] = (), jq: str | None = None,
+            allow_failure: bool = False) -> subprocess.CompletedProcess[str]:
+    """One GitHub REST call through ``gh api``.
+
+    REST rather than ``gh repo``/``gh pr`` subcommands: those use GraphQL, which some tokens,
+    proxies and GitHub Enterprise setups do not allow, while REST works wherever ``gh`` does.
+    """
+    args = ["gh", "api", path]
+    if method:
+        args += ["-X", method]
+    for field_ in fields:
+        args += ["-f", field_]  # string field
+    for field_ in typed:
+        args += ["-F", field_]  # typed field: true/false/numbers
+    if jq:
+        args += ["--jq", jq]
+    return _run(runner, args, allow_failure=allow_failure)
+
+
 def _remote_exists(target: Target, runner: CommandRunner) -> bool:
-    result = _run(
-        runner,
-        ["gh", "repo", "view", target.github_slug],
-        allow_failure=True,
-    )
-    return result.returncode == 0
+    return _gh_api(runner, f"repos/{target.github_slug}", allow_failure=True).returncode == 0
+
+
+def _clone_url(target: Target) -> str:
+    return target.target_repo if target.target_repo.endswith(".git") else f"{target.target_repo}.git"
 
 
 def force_clone(
@@ -195,11 +214,11 @@ def force_clone(
     workspace: Path,
     runner: CommandRunner,
 ) -> None:
-    """Discard any existing checkout and clone the target remote fresh."""
+    """Discard any existing checkout and clone the target remote fresh (plain git)."""
     if workspace.exists():
         shutil.rmtree(workspace)
     workspace.parent.mkdir(parents=True, exist_ok=True)
-    _run(runner, ["gh", "repo", "clone", target.github_slug, str(workspace)])
+    _run(runner, ["git", "clone", _clone_url(target), str(workspace)])
 
 
 def _ensure_checkout(
@@ -208,18 +227,11 @@ def _ensure_checkout(
     runner: CommandRunner,
 ) -> str:
     if not _remote_exists(target, runner):
-        _run(
-            runner,
-            [
-                "gh",
-                "repo",
-                "create",
-                target.github_slug,
-                "--private",
-                "--description",
-                target.description,
-            ],
-        )
+        owner, name = target.github_slug.split("/")
+        login = _gh_api(runner, "user", jq=".login").stdout.strip()
+        path = "user/repos" if owner == login else f"orgs/{owner}/repos"
+        _gh_api(runner, path, f"name={name}", f"description={target.description}",
+                typed=("private=true",), method="POST")
     force_clone(target, workspace, runner)
     return "cloned"
 
@@ -305,46 +317,29 @@ def _publish_scaffold(
         cwd=workspace,
     )
     sha = _run(runner, ["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
-    create = _run(
+    owner = target.github_slug.split("/")[0]
+    existing = _gh_api(
         runner,
-        [
-            "gh",
-            "pr",
-            "create",
-            "--repo",
-            target.github_slug,
-            "--head",
-            ONBOARDING_BRANCH,
-            "--base",
-            _BASE_BRANCH,
-            "--title",
-            f"Onboarding: scaffold {target.name}",
-            "--body",
-            (
-                "Seeds the OKF bundle (knowledge/, inbox, processed archive, root navigation) "
-                "and a minimal contracts/target.yaml for the target to fill in."
-            ),
-        ],
+        f"repos/{target.github_slug}/pulls?head={owner}:{ONBOARDING_BRANCH}&state=open",
+        jq=".[0].html_url // empty",
         allow_failure=True,
-    )
-    if create.returncode == 0:
-        return sha, create.stdout.strip()
-    existing = _run(
+    ).stdout.strip()
+    if existing:
+        return sha, existing
+    created = _gh_api(
         runner,
-        [
-            "gh",
-            "pr",
-            "view",
-            ONBOARDING_BRANCH,
-            "--repo",
-            target.github_slug,
-            "--json",
-            "url",
-            "--jq",
-            ".url",
-        ],
+        f"repos/{target.github_slug}/pulls",
+        f"title=Onboarding: scaffold {target.name}",
+        f"head={ONBOARDING_BRANCH}",
+        f"base={_BASE_BRANCH}",
+        (
+            "body=Seeds the OKF bundle (knowledge/, inbox, processed archive, root navigation) "
+            "and a minimal contracts/target.yaml for the target to fill in."
+        ),
+        method="POST",
+        jq=".html_url",
     )
-    return sha, existing.stdout.strip()
+    return sha, created.stdout.strip()
 
 
 def prepare_target(

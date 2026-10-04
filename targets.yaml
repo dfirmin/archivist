@@ -18,3 +18,12 @@ targets:
     status: active
     engine_version: v0.1.0
     auto_trigger: false
+
+  - slug: archivist-knowledge-01
+    name: Archivist Knowledge 01
+    description: Live end-to-end test target for archivist, including publishing
+    target_repo: https://github.com/dfirmin/archivist-knowledge-01
+    type: test
+    status: active
+    engine_version: v0.1.0
+    auto_trigger: false

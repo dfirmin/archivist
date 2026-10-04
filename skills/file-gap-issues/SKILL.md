@@ -51,19 +51,31 @@ PR #<number> — <url>
 
 ## 3. Create or update, by exact title
 
-Each label exists before it is used:
+Use the REST API through `gh api` (the `gh issue`/`gh label` subcommands need GraphQL, which
+some tokens and hosts do not allow). Write each body to a file first.
+
+Each label exists before it is used ("already exists" is fine):
 
 ```bash
-gh label create "<label>" --repo "$REPO"   # "already exists" is fine
+gh api -X POST "repos/$REPO/labels" -f name="<label>" 2>/dev/null || true
 ```
 
-Find an open issue whose title equals the rendered title exactly:
+Find an open issue whose title equals the rendered title exactly. The search API matches
+loosely, so compare titles exactly yourself:
 
 ```bash
-gh issue list --repo "$REPO" --state open --search "\"<title>\" in:title" --json number,title
+gh api "repos/$REPO/issues?state=open&per_page=100" --paginate \
+  --jq '.[] | select(.pull_request == null) | select(.title == "<title>") | .number'
 ```
 
-No exact match → `gh issue create --repo "$REPO" --title … --body-file … --label …`.
-An exact match → `gh issue edit <n> --repo "$REPO" --body-file … --add-label …`.
+No match → create; a match → update the body and add the labels:
+
+```bash
+gh api -X POST "repos/$REPO/issues" -f title="<title>" -F body=@<body file> \
+  -f "labels[]=<label 1>" -f "labels[]=<label 2>" --jq '"\(.number) \(.html_url)"'
+
+gh api -X PATCH "repos/$REPO/issues/<n>" -F body=@<body file> --jq .html_url
+gh api -X POST "repos/$REPO/issues/<n>/labels" -f "labels[]=<label 1>" -f "labels[]=<label 2>" > /dev/null
+```
 
 Done when every gap has an issue, each reported as created or updated with its number.

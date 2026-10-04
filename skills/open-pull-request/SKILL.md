@@ -12,15 +12,26 @@ otherwise the owner and name of `origin`
 branch (`RUN_BRANCH`) and the base is `main`. Keep `https_proxy` if it is set. Credentials
 stay out of output.
 
+Use the GitHub REST API through `gh api`, not `gh pr …`: the `pr` subcommands need GraphQL,
+which some tokens and hosts do not allow; REST works wherever `gh` does.
+
+```bash
+REPO=$(git remote get-url origin | sed -E 's#(\.git)?$##; s#.*github\.com[/:]##')
+OWNER=${REPO%%/*}
+```
+
 ## 1. Reuse an open PR
 
 ```bash
-gh pr list --repo "$REPO" --head "$RUN_BRANCH" --base main --state open --json number,url
+gh api "repos/$REPO/pulls?head=$OWNER:$RUN_BRANCH&base=main&state=open" --jq '.[] | "\(.number) \(.html_url)"'
 ```
 
-A row means the PR exists. Refresh its body with the concepts the branch now changes
-(the list and body in step 2) using `gh pr edit <number> --repo "$REPO" --body-file <body
-file>`, report it as reused, and stop.
+A line means the PR exists. Refresh its body with the concepts the branch now changes (the
+list and body in step 2), report it as reused, and stop:
+
+```bash
+gh api -X PATCH "repos/$REPO/pulls/<number>" -F body=@<body file> --jq .html_url
+```
 
 ## 2. Otherwise create it
 
@@ -31,8 +42,8 @@ git diff --name-only origin/main...HEAD -- knowledge/ | grep -E '\.md$'
 ```
 
 ```bash
-gh pr create --repo "$REPO" --head "$RUN_BRANCH" --base main \
-  --title "archivist: $RUN_BRANCH" --body-file <body file>
+gh api -X POST "repos/$REPO/pulls" -f title="archivist: $RUN_BRANCH" -f head="$RUN_BRANCH" \
+  -f base=main -F body=@<body file> --jq '"\(.number) \(.html_url)"'
 ```
 
 Body:
@@ -43,7 +54,5 @@ Archivist run on this branch.
 Concepts:
 - `<concept path>`
 ```
-
-`gh pr create` prints the PR URL; the number is the trailing `/pull/<n>`.
 
 Done when you hold the PR number and URL, and say whether it was created or reused.
