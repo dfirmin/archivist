@@ -33,6 +33,7 @@ AUTH_MODES = (GATEWAY_KEY_AUTH, ANTHROPIC_API_AUTH, LOCAL_CLAUDE_AUTH, INHERIT_A
 CLAUDE_AUTH_MODE_ENV = "CLAUDE_AUTH_MODE"
 ANTHROPIC_API_BASE = "https://api.anthropic.com"
 _GATEWAY_ONLY = ("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+_BETAS_OFF = {"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1"}  # a default: an operator's 0 wins
 
 
 class ConfigError(ArchivistError):
@@ -68,10 +69,13 @@ class AuthConfig:
     endpoint: str
     set_env: dict[str, str] = field(default_factory=dict)
     unset_env: tuple[str, ...] = ()
+    default_env: dict[str, str] = field(default_factory=dict)
 
     def apply(self, base_env: dict[str, str]) -> dict[str, str]:
         env = {k: v for k, v in base_env.items() if k not in self.unset_env}
         env.update(self.set_env)
+        for key, value in self.default_env.items():
+            env.setdefault(key, value)
         return env
 
     def describe(self) -> str:
@@ -116,22 +120,22 @@ def resolve_auth(
         model = get("ACT_CLAUDE_MODEL") or get("LITELLM_MODEL") or get("ANTHROPIC_MODEL")
         if not model:
             raise ConfigError("missing configuration: ACT_CLAUDE_MODEL (local-claude mode)")
-        set_env = {
-            "ANTHROPIC_MODEL": model,
-            "ACT_CLAUDE_MODEL": model,
-            "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
-        }
+        # Unchanged from the original engine: the container entrypoint drops ANTHROPIC_API_KEY
+        # so the apiKeyHelper is used; outside the container the environment is left as is.
+        set_env = {"ANTHROPIC_MODEL": model, "ACT_CLAUDE_MODEL": model}
         endpoint = get("ANTHROPIC_BASE_URL") or get("LITELLM_API_BASE") or "apiKeyHelper default"
-        return AuthConfig(mode, model, endpoint, set_env, ("ANTHROPIC_API_KEY",))
+        return AuthConfig(mode, model, endpoint, set_env, (), _BETAS_OFF)
 
+    # Unchanged from the original engine (resolve_litellm_config): same variables, same
+    # fallbacks, same precedence; the bearer token and beta setting are left to the operator.
     base = get("LITELLM_API_BASE") or get("ANTHROPIC_BASE_URL")
-    key = get("LITELLM_API_KEY")
+    key = get("LITELLM_API_KEY") or get("ANTHROPIC_API_KEY")
     model = get("LITELLM_MODEL") or get("ACT_CLAUDE_MODEL")
     missing = [
         name
         for name, value in (
             ("LITELLM_API_BASE (or ANTHROPIC_BASE_URL)", base),
-            ("LITELLM_API_KEY", key),
+            ("LITELLM_API_KEY (or ANTHROPIC_API_KEY)", key),
             ("LITELLM_MODEL (or ACT_CLAUDE_MODEL)", model),
         )
         if not value
@@ -143,6 +147,5 @@ def resolve_auth(
         "ANTHROPIC_BASE_URL": base.rstrip("/"),
         "ANTHROPIC_MODEL": model,
         "ACT_CLAUDE_MODEL": model,
-        "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
     }
-    return AuthConfig(mode, model, base.rstrip("/"), set_env, ("ANTHROPIC_AUTH_TOKEN",))
+    return AuthConfig(mode, model, base.rstrip("/"), set_env, (), _BETAS_OFF)

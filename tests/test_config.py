@@ -53,15 +53,28 @@ def test_gateway_key_routes_through_the_gateway(tmp_path: Path) -> None:
     assert out["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] == "1"
 
 
+def test_gateway_key_keeps_original_fallbacks_and_operator_settings(tmp_path: Path) -> None:
+    """Same as the original engine: ANTHROPIC_* fallbacks, bearer token kept, betas only defaulted."""
+    env = {"ANTHROPIC_BASE_URL": "https://gw", "ANTHROPIC_API_KEY": "ak", "ACT_CLAUDE_MODEL": "m",
+           "ANTHROPIC_AUTH_TOKEN": "bearer", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "0"}
+    out = resolve(env, tmp_path).apply(env)
+    assert (out["ANTHROPIC_BASE_URL"], out["ANTHROPIC_API_KEY"], out["ANTHROPIC_MODEL"]) == ("https://gw", "ak", "m")
+    assert out["ANTHROPIC_AUTH_TOKEN"] == "bearer"
+    assert out["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] == "0"
+    both = {"LITELLM_API_BASE": "https://gw", "LITELLM_API_KEY": "lk", "ANTHROPIC_API_KEY": "ak", "LITELLM_MODEL": "m"}
+    assert resolve(both, tmp_path).apply(both)["ANTHROPIC_API_KEY"] == "lk"  # LiteLLM key wins
+
+
 def test_gateway_key_names_everything_missing(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="LITELLM_API_BASE.*LITELLM_API_KEY.*LITELLM_MODEL"):
         resolve({}, tmp_path)
 
 
-def test_local_claude_defers_to_the_api_key_helper(tmp_path: Path) -> None:
-    env = {"CLAUDE_AUTH_MODE": "local-claude", "ACT_CLAUDE_MODEL": "m", "ANTHROPIC_API_KEY": "stale"}
+def test_local_claude_matches_the_original_engine(tmp_path: Path) -> None:
+    """Model from ACT_CLAUDE_MODEL / LITELLM_MODEL / ANTHROPIC_MODEL; nothing else changed."""
+    env = {"CLAUDE_AUTH_MODE": "local-claude", "LITELLM_MODEL": "m", "ANTHROPIC_BASE_URL": "https://gw"}
     out = resolve(env, tmp_path).apply(env)
-    assert "ANTHROPIC_API_KEY" not in out
+    assert out == {**env, "ANTHROPIC_MODEL": "m", "ACT_CLAUDE_MODEL": "m", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1"}
 
 
 def test_inherit_changes_nothing(tmp_path: Path) -> None:

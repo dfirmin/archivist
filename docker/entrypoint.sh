@@ -107,10 +107,10 @@ with open(os.path.join(os.environ['HOME'], '.claude', 'settings.json'), 'w') as 
     json.dump(settings, f, indent=2)
 "
 else
-  # gateway-key (default): the gateway key is the API key, sent to the gateway URL.
+  # gateway-key (default) — unchanged from the original engine.
   export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS="${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS:-1}"
-  if [[ -n "${LITELLM_API_KEY:-}" ]]; then
-    export ANTHROPIC_API_KEY="${LITELLM_API_KEY}"
+  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    export ANTHROPIC_API_KEY="${LITELLM_API_KEY:-}"
   fi
   if [[ -z "${ANTHROPIC_BASE_URL:-}" ]] && [[ -n "${LITELLM_API_BASE:-}" ]]; then
     export ANTHROPIC_BASE_URL="${LITELLM_API_BASE}"
