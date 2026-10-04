@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "archivist"
-version = "0.2.0"
+version = "0.3.0.dev0"
 description = "Contract-driven document engine: engine-owned Claude Code agents author OKF bundles from target-owned contracts"
 readme = "README.md"
 requires-python = ">=3.12"
