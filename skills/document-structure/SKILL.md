@@ -72,10 +72,9 @@ authors only routed sections.
 | A reference contract (registry, owner list, glossary …) | frontmatter field values per the field's `from` rule; scope decisions | body text, a contact, name, role, channel, expansion or description |
 | Your own knowledge or "context for clarity" | nothing | anything |
 
-Work evidence first: for each section you author, list the source passages that support it
-(quoted, with the document), then write only what that list holds. A section with no passage
-is an outcome, not a gap to fill: it takes its owner rule's empty form (stub when required,
-nothing when `required: false`), and the gap fleet reports it downstream. Expand a term only
+A section no source passage supports is an outcome, not a hole to fill: it takes its owner
+rule's empty form (stub when required, nothing when `required: false`), and the gap fleet
+reports it downstream. Expand a term only
 where a source expands it. End each authored passage with
 `*Source: [<document title>](<path under sources/processed/>), retrieved <YYYY-MM-DD>*`.
 

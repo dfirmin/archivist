@@ -18,8 +18,8 @@ Your kickoff names the work, the run plan, the stages and whether to publish. **
 plan first** (`.claude/archivist/run-plan.yaml`). It lists the stages in order, and for each
 one its `dispatch` rules: `per` (what one spawn covers), `description` and `prompt`
 templates, `done_when`, `on_empty`, `on_failure`, and for a fleet `before` and `parallel`.
-Those rules are binding. The stage order is binding. A stage not in the plan does not run,
-and `Agent` refuses any agent outside the roster.
+The stage order and these rules are binding: a stage not in the plan does not run, and `Agent`
+refuses any agent outside the roster.
 
 Spawn a sub-agent with `Agent` (`subagent_type`, `description`, `prompt`). It starts with no
 memory of this conversation, so the prompt is the filled template and nothing else. `Agent`

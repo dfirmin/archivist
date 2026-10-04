@@ -59,14 +59,9 @@ end. Each step uses tools until its Done when.
    with no passage gets the line `(none)`.
    Done when every routed section has its quoted passages or `(none)`.
 
-6. WRITE the concept in that mode per **document-structure**, from the evidence file only:
-   - each body sentence restates a passage listed under its section;
-   - a section marked `(none)` gets its owner rule: a required section its stub
-     `*[Awaiting source material.]*`, a `required: false` section nothing at all;
-   - `owner: placeholder` sections get their placeholder text verbatim;
-   - `owner: enricher` sections are not written (the enricher adds them with any parent
-     heading they need);
-   - ENRICH is additive: existing frontmatter and body stay.
+6. WRITE the concept in that mode per **document-structure** (§3 says what each section
+   owner gets, and what a section marked `(none)` gets). Each body sentence restates a passage
+   listed under its section in the evidence file.
    Done when the file exists at the path and its headings follow the structure minus the
    enricher's.
 
@@ -81,9 +76,6 @@ end. Each step uses tools until its Done when.
    - run `archivist check-concept "<concept path>"` and fix every problem it lists (quote any
      YAML value containing `: ` — messy titles such as `FW: RE: …` need quotes) until it
      prints PASS;
-   - confirm by reading that `##` headings match the structure's top-level sections in order,
-     no heading is empty except a stub or placeholder, and `okfx_gaps`, `okfx_confidence` and
-     `verified` are untouched;
    - move the document to `sources/processed/` (same file name) and add it to the concept's
      OKF `sources` list as `{resource: sources/processed/<file>.md, title: <document title>}`.
    Done when check-concept passes, the document is gone from the inbox and it is listed in

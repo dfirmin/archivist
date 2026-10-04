@@ -81,10 +81,14 @@ Agent and skill files follow Anthropic's skill-authoring guidance:
 - Body: a short prompt with numbered steps, each ending in **Done when**. Positive
   instructions, one term per concept, no dates or version-dependent advice. A file over 100
   lines opens with a one-line `Contents:` list, because agents may read only the top.
-- Fit the wording to the model the agent pins. Haiku agents (gap-agent, scorer) get explicit,
-  ordered decision steps and an example of the exact command. Sonnet and Opus 5.x agents follow
-  plain wording literally: name the tool to use, and leave out shouted emphasis (MUST, NEVER,
-  CRITICAL), which over-constrains them.
+- Fit the wording to the model the agent pins. Sonnet and Opus 5.x agents get the goal, the
+  principle behind a rule, and the tool to use; leave out rule lists, worked examples and
+  shouted emphasis (MUST, NEVER, CRITICAL), which over-constrain them. Haiku agents
+  (gap-agent, scorer) keep explicit, ordered decision steps and an example of the exact command.
+- Say each instruction once, in the place that owns it: a skill's rule is not restated in the
+  agent that preloads it, and the agent points to the skill section instead. An agent, its
+  skills and a target's contracts must not contradict one another; when they would, fix the
+  contract or the skill rather than adding a tie-break.
 - Fragile, must-be-exact operations are commands (`record-gap`, `check-concept`), not prose.
 - Preload a skill only if every run of that agent needs it. `.claude/` in a workspace is
   generated on every run; edit `agents/` and `skills/`.
