@@ -29,4 +29,5 @@ kinds:
     detection:
       - Only routine-procedure runbooks are judged; incident-response runbooks are absent by definition
       - The steps change a production system and there is no Rollback section
+      - A production system is one that serves customers or holds business data (applications, databases, pipelines, infrastructure); changing a team's own tooling settings (pager schedules, chat channels, dashboards, tickets) is not a production change
     priority: medium

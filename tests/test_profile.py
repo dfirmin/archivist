@@ -95,6 +95,8 @@ def test_kickoff_names_plan_stages_and_publish() -> None:
     assert "Stages: author, verifier." in text
     assert "Publish: yes, on branch `archivist/a`." in text
     assert "Leave git alone" in build_kickoff(skip_publish=True)
+    resumed = build_kickoff(branch="archivist/run-1", continue_branch=True)
+    assert "already created and pushed. Check it out; do not recreate it." in resumed
 
 
 DOMAIN_WORDS = ("subject area", "subject-area", "business view", "business-view", "physical view",

@@ -380,8 +380,13 @@ def run_conductor_agent(
     concept_file: str | None = None,
     skip_publish: bool = False,
     pipeline: str | None = None,
+    continue_branch: bool = False,
 ) -> int:
-    """Load the workspace and run conductor sessions over it."""
+    """Load the workspace and run conductor sessions over it.
+
+    ``continue_branch``: RUN_BRANCH names a branch an earlier run already pushed (with its PR);
+    this run adds commits to it instead of starting it again from main.
+    """
     workspace = workspace.resolve()
     if not workspace.is_dir():
         print(f"FAIL  workspace not found: {workspace}", file=sys.stderr)
@@ -424,7 +429,10 @@ def run_conductor_agent(
             continue_branch=continue_branch,
         )
 
-    kickoff = kickoff_for(limit=inbox_limit, continue_branch=False)
+    if continue_branch and not env.get("RUN_BRANCH"):
+        print("FAIL  --continue-branch needs RUN_BRANCH set to the branch to continue", file=sys.stderr)
+        return 1
+    kickoff = kickoff_for(limit=inbox_limit, continue_branch=continue_branch and not skip_publish)
     print(f"workspace {workspace}")
     print(f"target    {run.contracts.slug}")
     print(f"model     {model or 'Claude Code default'}")

@@ -67,6 +67,9 @@ fi
 if [[ -n "${ENGINE}" ]]; then
   ARGS+=(--engine "$ENGINE")
 fi
+if [[ "${CONTINUE_BRANCH:-0}" == "1" ]]; then
+  ARGS+=(--continue-branch)
+fi
 if [[ "$SKIP_PUBLISH" == "1" ]]; then
   ARGS+=(--skip-publish)
 fi

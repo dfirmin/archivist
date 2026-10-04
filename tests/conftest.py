@@ -26,6 +26,14 @@ def minimal(tmp_path: Path) -> Path:
     return dest
 
 
+@pytest.fixture
+def handbook(tmp_path: Path) -> Path:
+    """A writable copy of the handbook example (routing + structure rules)."""
+    dest = tmp_path / "handbook"
+    shutil.copytree(EXAMPLES / "handbook", dest)
+    return dest
+
+
 def edit_yaml(path: Path, change) -> None:  # type: ignore[no-untyped-def]
     """Load a YAML file, let ``change`` mutate it, write it back."""
     data = yaml.safe_load(path.read_text(encoding="utf-8"))

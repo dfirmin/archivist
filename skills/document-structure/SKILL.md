@@ -83,7 +83,10 @@ CREATE and PARTIAL CREATE write, in this order:
 - each `fields` entry from its `from` rule; a `required` field with no value stops the
   write (report it).
 
-ENRICH preserves every existing key, appends to `sources`, and refreshes `generated`.
+ENRICH preserves every existing key, appends to `sources`, and refreshes `generated`. When the
+new source changes something the concept states (an amendment, a correction), update that text
+to the new value everywhere it appears and cite the new source there; say what changed when
+the source does (for example "raised from $60 to $75, effective November 1").
 Nobody but its owner writes `okfx_gaps`, `okfx_confidence` or `verified`; `okfx_structure` is
 written by the author on CREATE and never changed afterwards.
 

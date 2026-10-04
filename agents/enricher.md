@@ -40,7 +40,7 @@ in the run plan (`.claude/archivist/run-plan.yaml`), are the how. Load them with
    section is not written, and neither is a parent heading it alone would have needed.
 
 4. CHECK: frontmatter and every heading outside your sections equal what step 1 recorded;
-   any temporary clone or file is removed.
+   `archivist check-concept "<concept path>"` passes; any temporary clone or file is removed.
    Done when all hold.
 
 End with this report:

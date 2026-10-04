@@ -52,7 +52,7 @@ agents:
       per: concept
       description: "verify-{concept}"
       prompt: "Verify {concept_path} against its cited sources."
-      done_when: The result reports how many losses were restored.
+      done_when: The result reports restored losses, reconciled conflicts and removed unsupported passages.
       on_failure: stop-concept
 
   gap-agent:

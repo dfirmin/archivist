@@ -19,9 +19,10 @@ engine runs many targets without engine changes.
 2. **Deterministic code is for guardrails and contracts:** a contract exists, parses, satisfies
    its schema, its cross-references resolve, and the contracts a pipeline needs are declared.
    Add any other deterministic step only after a **live** failure shows an agent cannot be made
-   reliable, and record the failure and the decision in `docs/adr/`. Today there are exactly
-   three: contract validation, the entry-stage dispatch check, and `record-gap` (YAML
-   serialization under a lock).
+   reliable, and record the failure and the decision in `docs/adr/`. Today there are
+   these: contract validation, engine pinning, the entry-stage dispatch check, `record-gap`
+   (YAML serialization under a lock) and `check-concept` (frontmatter checked after an agent
+   writes it).
 3. **Contracts are flexible by default.** Only `contracts/target.yaml` is required. Every other
    contract is required only when an agent in the chosen pipeline lists it under `requires` in
    `agents/profile.yaml`. Never make a contract mandatory for every target.

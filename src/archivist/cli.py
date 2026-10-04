@@ -12,6 +12,7 @@ from archivist.claude_runner import (
     run_conductor_agent,
     run_smoke_agent,
 )
+from archivist.check_concept import check_concept
 from archivist.config import resolve_auth
 from archivist.engine import resolve_run
 from archivist.engines import enforce_pin, running_version
@@ -123,6 +124,23 @@ def _record_gap(args: argparse.Namespace) -> int:
     return 0
 
 
+def _check_concept(args: argparse.Namespace) -> int:
+    failed = 0
+    for raw in args.concept:
+        try:
+            report = check_concept(Path(raw))
+        except ArchivistError as err:
+            return _fail(err)
+        if report.ok:
+            print(f"PASS  {raw}")
+        else:
+            failed += 1
+            print(f"FAIL  {raw}")
+            for problem in report.problems:
+                print(f"      - {problem}")
+    return 1 if failed else 0
+
+
 def _run_conductor(args: argparse.Namespace) -> int:
     try:
         _on_pinned_engine(Path(args.workspace), args)
@@ -136,6 +154,7 @@ def _run_conductor(args: argparse.Namespace) -> int:
         concept_file=args.concept,
         skip_publish=args.skip_publish,
         pipeline=args.pipeline,
+        continue_branch=args.continue_branch,
     )
 
 
@@ -221,8 +240,14 @@ def build_parser() -> argparse.ArgumentParser:
     conductor.add_argument("--concept", help="Bundle-relative existing concept: skip authoring")
     conductor.add_argument("--pipeline", help="Pipeline to run (default: the target's, else the engine's)")
     conductor.add_argument("--skip-publish", action="store_true", help="No branch, commit, push, PR or issues")
+    conductor.add_argument("--continue-branch", action="store_true",
+                           help="Add to the branch (and PR) named by RUN_BRANCH that an earlier run pushed")
     conductor.add_argument("--engine", help=ENGINE_HELP)
     conductor.set_defaults(func=_run_conductor)
+
+    check = commands.add_parser("check-concept", help="Check a concept's frontmatter against the contracts")
+    check.add_argument("concept", nargs="+", help="Path(s) to concept .md files")
+    check.set_defaults(func=_check_concept)
 
     gap = commands.add_parser("record-gap", help="Write one kind's okfx_gaps entry on a concept")
     gap.add_argument("concept", help="Path to the concept .md")

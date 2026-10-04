@@ -55,10 +55,12 @@ end. Each step uses tools until its Done when.
    Done when the file exists at the path, its headings follow the structure minus the
    enricher's, and each authored section is source-grounded or its owned stub.
 
-6. VALIDATE: frontmatter parses; `##` headings match the structure's top-level sections in
-   order; no heading is empty except a stub or placeholder; each body sentence traces to the
+6. VALIDATE: run `archivist check-concept "<concept path>"` and fix every problem it lists
+   (quote any YAML value containing `: ` — messy titles such as `FW: RE: …` need quotes) until
+   it prints PASS. Then check by reading: `##` headings match the structure's top-level sections
+   in order; no heading is empty except a stub or placeholder; each body sentence traces to the
    cited document; `okfx_gaps`, `okfx_confidence` and `verified` are untouched.
-   Done when all hold; fix any that does not before going on.
+   Done when check-concept passes and all hold.
 
 7. MOVE the document to `sources/processed/` (same file name) and add it to the
    concept's OKF `sources` list as `{resource: sources/processed/<file>.md,

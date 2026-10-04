@@ -43,6 +43,12 @@ whether its pipeline used them or not, and targets could override engine agents 
 - **`record-gap`** — hand-written YAML broke frontmatter on `: ` in descriptions, and fifteen
   concurrent gap-agents lost each other's entries. The command serializes and locks.
 
+- **`check-concept`** (added 2026-10-04) — a live run on messy sources wrote an email subject
+  (`FW: RE: meal limit - FINAL`) unquoted into `sources`; the colons made the frontmatter invalid
+  YAML and every later stage failed on it. Agents still write frontmatter; the command reports
+  invalid YAML, an unknown type, a structure the type does not allow, and missing or undeclared
+  fields, and the author, verifier, enricher and scorer must fix what it lists.
+
 Everything else — classification, scoping, grouping, structure choice, field resolution,
 enrichment, verification, gap judgement, scoring, cataloguing, publishing — is agent work.
 
