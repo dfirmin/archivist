@@ -1,6 +1,6 @@
 # 0006 — An extractor turns one noisy multi-topic document into verbatim topic extracts
 
-Status: proposed, 2026-10-05. Accepted once proven live on two targets.
+Status: proposed, 2026-10-05 (design agreed; §5 chosen by the owner). Accepted once proven live on two targets.
 
 ## Context
 
@@ -71,19 +71,31 @@ The problem is the split.
    classifies just enough to spot documents of an `extract` class and lists them as the first
    group, slug `extract`, ahead of `out-of-scope` (ADR 0005). The conductor dispatches the
    extractor once per document in that group and ends the session; the next session's planner
-   sees the extracts in the inbox and plans them like any other document. A run that names one
-   document (`--inbox-file`) is planned too when the target declares an `extract` class, so a
-   transcript named directly is never handed to the author. The profile names the extractor as a
-   second support agent next to the planner (`extractor:`), so it joins the roster only of runs
-   that author from the inbox.
+   sees the extracts in the inbox and plans them like any other document. The profile names the
+   extractor as a second support agent next to the planner (`extractor:`), so it joins the roster
+   only of runs that author from the inbox.
 
-5. **Nothing extractable is quarantined.** A transcript with no topic the extract rule keeps goes
+5. **A run that names one document is planned too, when the target extracts.** Today a run with
+   `--inbox-file` skips the planner and hands the document straight to the author. Only the
+   planner spots a transcript, so on a target that declares an `extract` class that shortcut would
+   let a transcript named directly reach the author whole, which is exactly what this ADR exists to
+   prevent. On such a target a named-document run therefore starts with the planner, limited to
+   that one document: a transcript is extracted (and the session ends, as in §4), anything else
+   goes on to the author as before. On a target without an `extract` class nothing changes.
+
+   The cost is one short planner session, seconds and a few cents, on every named-document run
+   of a target that extracts, including runs on ordinary documents. The alternative was to keep
+   the shortcut and have the author refuse a transcript ("needs extraction; run an inbox scan"):
+   cheaper per run, but the run produces nothing and must be repeated. Chosen: always plan, so a
+   transcript is split however the run was started.
+
+6. **Nothing extractable is quarantined.** A transcript with no topic the extract rule keeps goes
    to `quarantine/` as a stub (ADR 0005 §3) with the reason "no topic the extract rule keeps";
    an owner can widen the rule and requeue it. Topics that are relevant but out of scope (a view
    with no inventory row) are still extracted; the author then quarantines that extract with the
    specific reason, which is more useful than quarantining the whole call.
 
-6. **Re-extraction replaces.** Extracts are named `<transcript stem>--<topic slug>.md`. A requeued
+7. **Re-extraction replaces.** Extracts are named `<transcript stem>--<topic slug>.md`. A requeued
    transcript produces extracts with the same names where the topics are the same, and an extract
    still in the inbox with that name is replaced.
 
