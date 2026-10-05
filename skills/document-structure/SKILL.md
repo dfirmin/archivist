@@ -112,7 +112,8 @@ CREATE and PARTIAL CREATE write, in this order:
   write (report it).
 
 ENRICH preserves every existing key, appends to `sources`, refreshes `generated` and sets
-`okfx_placement` to this update. When the
+`okfx_placement` to this update, except on a concept this group itself created, which keeps
+`{outcome: new}`. When the
 new source changes something the concept states (an amendment, a correction), update that text
 to the new value everywhere it appears and cite the new source there; say what changed when
 the source does (for example "raised from $60 to $75, effective November 1").

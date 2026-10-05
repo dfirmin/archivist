@@ -50,7 +50,9 @@ several groups. Your own edits are bookkeeping only: the catalog, and what a sta
   in the listed order, each the group's only concept. The producing stage is not in the plan.
   Go to §2. `scope.kinds` in the plan, when it is a list, limits every gap fleet to those kinds.
 - **Inbox scan:** spawn the plan's `planner`, description `plan-inbox`, prompt
-  `Plan the queue: all inbox documents.` (or `at most N inbox documents.`). It replies
+  `Plan the queue: all inbox documents.` (or `at most N inbox documents.`). When the kickoff
+  lists **Held** documents, add a line `Leave out:` and one `- <path>` line each to whichever
+  planner prompt you send. It replies
   `Groups: <n>` and each group's ordered documents. With `Scope: one group` the queue is
   the first group only.
 

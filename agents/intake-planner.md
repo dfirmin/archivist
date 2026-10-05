@@ -18,7 +18,8 @@ Its `scope`, `grouping` and `ordering` prose is binding. With no intake contract
 document is in scope and is its own group, in file-name order.
 
 1. LIST the inbox: `ls -1 sources/inbox/*.md | sort`; keep the first N when
-   the scope is limited, or only the listed documents when the message lists them.
+   the scope is limited, or only the listed documents when the message lists them. Drop any
+   document the message says to leave out.
    Done when the list is recorded. Reply `Groups: 0` only after a second
    `ls -la sources/inbox` also shows no `.md` file.
 
@@ -35,6 +36,9 @@ document is in scope and is its own group, in file-name order.
    `out-of-scope`, so the author quarantines them before any authoring. The in-scope documents
    follow, grouped per the intake `grouping` and each group ordered per `ordering`. Give each
    group a short lowercase-hyphen slug.
+   An extract (its frontmatter has `extracted_from`) joins the group of the other documents
+   about the same concept, after them, whatever the `grouping` prose says about its kind of
+   document; with no such document it is a group of its own.
    Done when every listed document is in exactly one group.
 
 5. REPLY with this shape and nothing after it. `<n>` is the number of `Group` lines; count

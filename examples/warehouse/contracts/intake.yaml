@@ -66,7 +66,9 @@ classes:
     mode: enrich-only          # waits for the rule it amends
     sections: best-fit
   - id: meeting-transcript
-    description: A recorded meeting or call, as an exported transcript.
+    description: >-
+      A verbatim transcript of a recorded meeting or call: timestamped lines, each with a speaker.
+      Notes, emails and chat threads are not transcripts.
     mode: extract
     extract: >-
       Keep passages that define, change or question a physical view, a metric or a business

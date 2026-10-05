@@ -167,3 +167,8 @@ def test_named_documents_are_planned_first_on_a_target_that_extracts() -> None:
     text = build_kickoff(inbox_documents=("sources/inbox/call.md",), one_group=True, skip_publish=True)
     assert "only these inbox documents, planned first" in text and "- `sources/inbox/call.md`" in text
     assert "author the inbox document" not in text
+
+
+def test_held_documents_are_named_in_the_kickoff() -> None:
+    text = build_kickoff(held=("sources/inbox/re-br-hom-022.md",), one_group=True, skip_publish=True)
+    assert "Held: these inbox documents wait" in text and "- `sources/inbox/re-br-hom-022.md`" in text

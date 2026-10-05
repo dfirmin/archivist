@@ -43,4 +43,8 @@ concept_types:
     identity:
       fields: [title, okfx_team]
       match: all
-      guidance: The same task for the same team; titles match ignoring case and dates.
+      guidance: >-
+        The same task or incident for the same team. Titles match when they name the same system
+        and situation, whatever the wording: "Primary Database Outage Response" and "Database
+        Primary Outage Runbook" are one runbook; "Deploying the Web App" and "Rolling Back the Web
+        App" are two.

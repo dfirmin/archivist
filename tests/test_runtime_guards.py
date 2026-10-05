@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from archivist.dispatch_check import check_entry_stage_ran, planned_groups, planner_gave_up
+from archivist.dispatch_check import check_entry_stage_ran, first_group_documents, planned_groups, planner_gave_up
 from archivist.engine import load_engine, resolve_run
 from archivist.engines import EngineVersionError
 from archivist.errors import ContractError, WorkspaceError
@@ -214,3 +214,11 @@ def test_a_pin_moves_only_through_upgrade(tmp_path: Path, monkeypatch: pytest.Mo
     assert "quarantine/README.md" in result.written  # the missing layout note is seeded
     with pytest.raises(EngineVersionError, match="development build"):
         upgrade_target(target_slug="acme", workspace=workspace, pin="v1.2.4.dev1", registry_path=registry, local=True)
+
+
+def test_the_first_group_is_read_from_the_planner_reply() -> None:
+    reply = ("Groups: 2\nGroup 1: out-of-scope — amendment awaiting its rule\n- sources/inbox/re-br-hom-022.md\n"
+             "Group 2: custcase — Customer Case\n- `sources/inbox/a.md`\n- sources/inbox/b.md")
+    assert first_group_documents(monitor_with([("intake-planner", reply)]), "intake-planner") == [
+        "sources/inbox/re-br-hom-022.md"]
+    assert first_group_documents(monitor_with([("intake-planner", "Groups: 0")]), "intake-planner") == []

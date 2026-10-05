@@ -26,7 +26,12 @@ from typing import Sequence
 
 from archivist.agents import engine_agents_root, parse_agent, write_agent_definitions
 from archivist.config import ConfigError, resolve_auth
-from archivist.dispatch_check import check_entry_stage_ran, planned_groups, planner_gave_up
+from archivist.dispatch_check import (
+    check_entry_stage_ran,
+    first_group_documents,
+    planned_groups,
+    planner_gave_up,
+)
 from archivist.engine import Engine, ResolvedRun, load_engine, resolve_run
 from archivist.errors import ArchivistError, DefinitionError
 from archivist.profile import fenced_fields
@@ -337,6 +342,7 @@ def build_kickoff(
     pipeline: str | None = None,
     one_group: bool = False,
     continue_branch: bool = False,
+    held: Sequence[str] = (),
 ) -> str:
     """The conductor's first message: the job, in a few lines. The plan holds the rest."""
     if len(concept_files) == 1:
@@ -366,6 +372,12 @@ def build_kickoff(
         lines.append(f"Stages: {', '.join(stages)}. Spawn only these, in this order.")
     if kinds:
         lines.append(f"Gap kinds: only {', '.join(kinds)} (the plan's `scope.kinds`).")
+    if held:
+        listed = "\n".join(f"- `{d}`" for d in sorted(held))
+        lines.append(
+            "Held: these inbox documents wait for a document not yet authored; an earlier session "
+            f"took none of them. Tell the planner to leave them out of the queue:\n{listed}"
+        )
     if one_group:
         lines.append(
             "Scope: one group. Plan the queue, take only the first group through every stage, "
@@ -448,6 +460,9 @@ def run_conductor_agent(
     # ADR 0006 §5: a named document on a target that extracts is planned, and the extracts it
     # yields are followed in later sessions until every one has left the inbox.
     named: list[str] = [inbox_file] if inbox_file and roster.extracting else []
+    # Documents a session planned first and then took none of (an amendment awaiting its primary
+    # document): later sessions plan without them, so one waiting group never ends a scan.
+    held: set[str] = set()
 
     def kickoff_for(*, limit: int, continue_branch: bool, concepts: Sequence[str] = ()) -> str:
         return build_kickoff(
@@ -462,6 +477,7 @@ def run_conductor_agent(
             pipeline=roster.pipeline,
             one_group=scanning_inbox or bool(named),
             continue_branch=continue_branch,
+            held=tuple(sorted(held)),
         )
 
     if continue_branch and not env.get("RUN_BRANCH"):
@@ -490,9 +506,9 @@ def run_conductor_agent(
     def pending() -> set[str]:
         """The documents this run still has to take from the inbox (empty for other runs)."""
         if scanning_inbox:
-            return inbox_docs()
+            return inbox_docs() - held
         if named:
-            return set(named) & inbox_docs()
+            return (set(named) & inbox_docs()) - held
         return set()
 
     # A named document or concept is one session. An inbox scan is one session per group: a
@@ -582,8 +598,14 @@ def run_conductor_agent(
         if planned_groups(monitor, profile.planner) == 0 or not pending():
             break
         if not taken:
-            print("[loop] this session took no inbox documents; stopping", file=sys.stderr)
-            break
+            waiting_group = set(first_group_documents(monitor, profile.planner)) & after_docs
+            if not waiting_group or waiting_group <= held:
+                print("[loop] this session took no inbox documents; stopping", file=sys.stderr)
+                break
+            held |= waiting_group
+            print(f"[loop] held for later runs: {', '.join(sorted(waiting_group))}", file=sys.stderr)
+            if not pending():
+                break
         if inbox_limit and consumed_total >= inbox_limit:
             break
         if group_limit and session >= group_limit:
