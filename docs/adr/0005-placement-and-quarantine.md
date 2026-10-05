@@ -1,6 +1,7 @@
 # 0005 — Contract-declared identity for placement, and quarantine for what cannot be placed
 
-Status: proposed, 2026-10-05 (issue #7). Accepted once proven live on two targets.
+Status: accepted, 2026-10-05 (issue #7). Proven live on the warehouse and handbook examples and
+on the test target with publishing (`docs/live-proof/2026-10-05.md`).
 
 ## Context
 
@@ -53,7 +54,8 @@ concepts already written, keyed by the field that identifies an instance.
 
    A type without `identity` keeps today's rule (resolved path, then title) and is encouraged
    to declare one. The author records the outcome as `okfx_placement: {outcome, matched}`
-   so live runs can be audited. The judgement left to the author is the grouping check and the
+   (`matched` is the identity value both share, e.g. `"okfx_physical_views: CUSTCASE"`) so live
+   runs can be audited. The judgement left to the author is the grouping check and the
    identity values themselves; the lookup is a grep.
 
 3. **Quarantine is the third disposition.** Anything the author cannot place in `knowledge/`
@@ -80,9 +82,10 @@ concepts already written, keyed by the field that identifies an instance.
    publishing workflows all walk `knowledge/` only, so quarantine needs no exclusion logic.
    `log.md` gets a `**Quarantined**` bullet per document so the change log stays honest.
 
-4. **Quarantine is visible.** `file-gap-issues` files one issue per quarantined document
-   (title from the stub, body from `okfx_quarantine`) and closes it when the document leaves
-   quarantine, as it already does for resolved gaps (ADR 0004 §7). A directory nobody is told
+4. **Quarantine is visible.** `file-gap-issues` files one issue per quarantined draft, titled
+   `Quarantined: <file name>` with the body from `okfx_quarantine`, and closes it when a later
+   run authors that document into `knowledge/`, as it already does for resolved gaps
+   (ADR 0004 §7). The log keeps the **Quarantined** bullet after the document is authored. A directory nobody is told
    about is a directory that rots.
 
 5. **Resolution is a re-run, through `archivist requeue`.** The typical fix is a contract
@@ -97,8 +100,10 @@ concepts already written, keyed by the field that identifies an instance.
 6. **Dispatch.** The author's report gains a `Quarantined:` block (`<file> — <reason>`); its
    `done_when` in the profile counts a quarantined document as having left the inbox. The
    conductor dispatches no later stage for a quarantined path. The intake-planner still only
-   reads: documents it lists under `Skipped:` are dispatched to the author as one final group
-   so the author quarantines them with the stub (steps 1–3 only, so this is cheap).
+   reads, but no longer skips: out-of-scope documents form the first group, `out-of-scope`, and
+   the author quarantines them with stubs (steps 1–3 and 8 only, so this is cheap). First, so
+   that an inbox scan never stops on an unauthorable group before quarantining them. A planner
+   reply of `Groups: 0` over a non-empty inbox is therefore malformed and retried.
 
 ## Deterministic steps added
 
@@ -133,8 +138,9 @@ with its own ADR.
   `subject-area-overview`; `examples/handbook` and `minimal` declare `title`.
 - The concept-types schema gains `identity`; a target using it must pin to the release that
   introduces it (ADR 0002).
-- Scaffold adds `quarantine/README.md` and `sources/quarantine/`; the bundle README's layout
-  block names them.
+- Scaffold seeds `quarantine/README.md`, and an upgrade seeds it when missing; the author
+  creates `quarantine/` and `sources/quarantine/` when it first needs them. The bundle README
+  and AGENTS layout name them.
 - Live proof: on the warehouse, a document about `LEGACY_FEED` (already `UNKNOWN` in the
   example inventory) quarantines with a stub and an issue; an attribute-notes document for
   CUSTCASE in a *second* run updates the existing overview rather than creating one; a

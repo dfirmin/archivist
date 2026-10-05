@@ -31,7 +31,9 @@ concept this group created or changed, newest first:
 
 Each link path starts with `/` (bundle-root absolute), as above. **Creation** when the concept
 was new this run, **Update** otherwise. A quarantined draft gets
-`* **Quarantined**: [<title>](/quarantine/<file>.md) — <its okfx_quarantine reason>`. Apply the contract's
+`* **Quarantined**: [<title>](/quarantine/<file>.md) — <its okfx_quarantine reason>`.
+Bullets already in the log are history: add new ones above them and never edit or remove one,
+even when its link no longer resolves (a requeued draft is deleted). Apply the contract's
 `log.guidance` when present. Scores and gap counts live on the concept, not here.
 
 Done when each concept from this group has exactly one new bullet under today.
