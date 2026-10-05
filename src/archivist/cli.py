@@ -18,7 +18,7 @@ from archivist.engine import resolve_run
 from archivist.engines import enforce_pin, running_version
 from archivist.errors import ArchivistError
 from archivist.load_target import load_target
-from archivist.record_gap import record_gap
+from archivist.record_gap import prune_gaps, record_gap
 from archivist.workspace import prepare_target, upgrade_target
 
 
@@ -141,6 +141,24 @@ def _check_concept(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def _listed(values: list[str] | None) -> list[str]:
+    """Repeatable options that also take comma-separated values."""
+    return [part.strip() for value in values or () for part in value.split(",") if part.strip()]
+
+
+def _prune_gaps(args: argparse.Namespace) -> int:
+    try:
+        result = prune_gaps(Path(args.concept))
+    except ArchivistError as err:
+        return _fail(err)
+    for kind in result.removed:
+        print(f"gap       {kind} removed (no longer in, enabled for, or applicable under the contract)")
+    if result.created:
+        print("gap       okfx_gaps added (empty)")
+    print(f"PASS  okfx_gaps holds {result.gaps} entries")
+    return 0
+
+
 def _run_conductor(args: argparse.Namespace) -> int:
     try:
         _on_pinned_engine(Path(args.workspace), args)
@@ -151,7 +169,9 @@ def _run_conductor(args: argparse.Namespace) -> int:
         inbox_file=args.inbox_file,
         inbox_limit=args.inbox_limit,
         group_limit=args.group_limit,
-        concept_file=args.concept,
+        concept_files=_listed(args.concept),
+        kinds=_listed(args.kind),
+        concept_batch=args.concept_batch,
         skip_publish=args.skip_publish,
         pipeline=args.pipeline,
         continue_branch=args.continue_branch,
@@ -275,7 +295,19 @@ def build_parser() -> argparse.ArgumentParser:
     conductor.add_argument("--inbox-file", help="Bundle-relative inbox document to author")
     conductor.add_argument("--inbox-limit", type=int, default=0, help="Inbox scan: at most N documents")
     conductor.add_argument("--group-limit", type=int, default=0, help="Inbox scan: at most N groups")
-    conductor.add_argument("--concept", help="Bundle-relative existing concept: skip authoring")
+    conductor.add_argument(
+        "--concept",
+        action="append",
+        help="Existing concept(s) to run on, skipping authoring: bundle-relative paths "
+             "(repeatable or comma-separated) or 'all' for every published concept",
+    )
+    conductor.add_argument(
+        "--kind",
+        action="append",
+        help="Only these gap kind ids (repeatable or comma-separated); needs --concept and gap-agent",
+    )
+    conductor.add_argument("--concept-batch", type=int, default=10,
+                           help="Concepts per conductor session (default 10)")
     conductor.add_argument("--pipeline", help="Pipeline to run (default: the target's, else the engine's)")
     conductor.add_argument("--skip-publish", action="store_true", help="No branch, commit, push, PR or issues")
     conductor.add_argument("--continue-branch", action="store_true",
@@ -295,6 +327,13 @@ def build_parser() -> argparse.ArgumentParser:
     gap.add_argument("--description-file", help="Read the description from a file, or - for stdin")
     gap.add_argument("--absent", action="store_true", help="Remove this kind's entry: the gap is not present")
     gap.set_defaults(func=_record_gap)
+
+    prune = commands.add_parser(
+        "prune-gaps",
+        help="Drop okfx_gaps entries for kinds the contract no longer has, enables or applies (run before a gap fleet)",
+    )
+    prune.add_argument("concept", help="Path to the concept .md")
+    prune.set_defaults(func=_prune_gaps)
     return parser
 
 

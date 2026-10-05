@@ -3,7 +3,8 @@ name: file-gap-issues
 description: >
   Files one GitHub issue per `okfx_gaps` entry on a group's concepts, created or updated by exact
   title, titled and labelled as the target's publishing contract says, linked to the run's
-  pull request. Use after the PR exists.
+  pull request, and closes the open issue of each applicable kind the concept no longer has.
+  Use after the PR exists.
 allowed-tools: Bash, Read
 ---
 
@@ -79,3 +80,18 @@ gh api -X POST "repos/$REPO/issues/<n>/labels" -f "labels[]=<label 1>" -f "label
 ```
 
 Done when every gap has an issue, each reported as created or updated with its number.
+
+## 4. Close resolved gaps
+
+For each concept, take every kind in the gap-kinds contract that this run's fleet judged on it
+(the run plan's `scope.kinds` when that is a list, otherwise every enabled kind whose
+`applies_to` holds the concept's type id) and that has no `okfx_gaps` entry now. Render that
+kind's title as in §2. An open issue with exactly that title is resolved: comment and close it.
+
+```bash
+gh api -X POST "repos/$REPO/issues/<n>/comments" -f body="No longer present as of PR #<number>." > /dev/null
+gh api -X PATCH "repos/$REPO/issues/<n>" -f state=closed -f state_reason=completed --jq .html_url
+```
+
+Never close an issue for a kind outside this run's scope. Done when each resolved kind's open
+issue is reported closed, or reported as having none.

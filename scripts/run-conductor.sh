@@ -8,12 +8,17 @@
 #   GROUP_LIMIT=10 ./scripts/run-conductor.sh                     # at most 10 groups (a session each)
 #   INBOX_FILE=sources/inbox/foo.md ./scripts/run-conductor.sh
 #   CONCEPT_FILE='knowledge/.../overview.md' ./scripts/run-conductor.sh   # existing concept
+#   PIPELINE=gaps CONCEPTS=all ./scripts/run-conductor.sh          # re-judge every published concept
+#   PIPELINE=gaps CONCEPTS=all KINDS=missing_escalation ./scripts/run-conductor.sh   # one kind, all concepts
+#   PIPELINE=rescore CONCEPTS='knowledge/a.md,knowledge/b.md' ./scripts/run-conductor.sh
 #   SKIP_PUBLISH=1 ./scripts/run-conductor.sh                     # no branch/commit/push/PR/issues
 #   PIPELINE=author-verify ./scripts/run-conductor.sh             # only these stages run
 #   ENGINE=v0.2.0 ./scripts/run-conductor.sh                      # try another engine once (pin unchanged)
 #
 # PIPELINE names a pipeline from contracts/target.yaml or agents/profile.yaml (default: the
-# target's default_pipeline, else the engine's). With CONCEPT_FILE the producing stage drops out.
+# target's default_pipeline, else the engine's). With CONCEPT_FILE or CONCEPTS (comma-separated
+# paths, or `all`) the producing stage drops out; KINDS (comma-separated gap kind ids) narrows the
+# gap fleet; CONCEPT_BATCH sets concepts per session (default 10). See docs/adr/0004.
 #
 # TARGET_SLUG (default sample) picks the workspace under out/workspace/.
 set -euo pipefail
@@ -26,6 +31,9 @@ TARGET_SLUG="${TARGET_SLUG:-sample}"
 WORKSPACE="${WORKSPACE:-/workspace/${TARGET_SLUG}}"
 INBOX_FILE="${INBOX_FILE:-}"
 CONCEPT_FILE="${CONCEPT_FILE:-}"
+CONCEPTS="${CONCEPTS:-}"
+KINDS="${KINDS:-}"
+CONCEPT_BATCH="${CONCEPT_BATCH:-0}"
 SKIP_PUBLISH="${SKIP_PUBLISH:-0}"
 INBOX_LIMIT="${INBOX_LIMIT:-0}"
 GROUP_LIMIT="${GROUP_LIMIT:-0}"
@@ -60,6 +68,15 @@ if [[ "$GROUP_LIMIT" -gt 0 ]]; then
 fi
 if [[ -n "${CONCEPT_FILE}" ]]; then
   ARGS+=(--concept "$CONCEPT_FILE")
+fi
+if [[ -n "${CONCEPTS}" ]]; then
+  ARGS+=(--concept "$CONCEPTS")
+fi
+if [[ -n "${KINDS}" ]]; then
+  ARGS+=(--kind "$KINDS")
+fi
+if [[ "$CONCEPT_BATCH" -gt 0 ]]; then
+  ARGS+=(--concept-batch "$CONCEPT_BATCH")
 fi
 if [[ -n "${PIPELINE}" ]]; then
   ARGS+=(--pipeline "$PIPELINE")

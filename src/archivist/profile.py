@@ -22,7 +22,7 @@ PROFILE_FILE = "profile.yaml"
 PROFILE_KEYS = frozenset(
     {"version", "coordinator", "planner", "default_pipeline", "agents", "pipelines", "enrichment_methods"}
 )
-AGENT_SPEC_KEYS = frozenset({"produces", "requires", "optional", "dispatch"})
+AGENT_SPEC_KEYS = frozenset({"produces", "requires", "optional", "writes", "dispatch"})
 DISPATCH_KEYS = frozenset(
     {"per", "parallel", "before", "description", "prompt", "done_when", "on_empty", "on_failure"}
 )
@@ -37,6 +37,7 @@ class AgentSpec:
     requires: tuple[str, ...] = ()
     optional: tuple[str, ...] = ()
     dispatch: Mapping[str, Any] | None = None
+    writes: tuple[str, ...] | None = None  # frontmatter fields only; None = may write anything
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +115,13 @@ def load_profile(root: Path | None = None, *, agent_names: set[str], skill_names
         for kind in (*requires, *optional):
             if kind not in CONTRACT_KINDS:
                 raise DefinitionError(f"{label}: {kind!r} is not a contract kind")
+        writes = None
+        if "writes" in spec:
+            writes = _names(spec.get("writes"), label=f"{label}.writes")
+            if not writes:
+                raise DefinitionError(f"{label}.writes must name at least one frontmatter field")
+            if spec.get("produces"):
+                raise DefinitionError(f"{label}: a producing stage writes concepts; it takes no writes")
         dispatch = spec.get("dispatch")
         if dispatch is not None:
             extra = sorted(set(dispatch) - DISPATCH_KEYS)
@@ -124,7 +132,7 @@ def load_profile(root: Path | None = None, *, agent_names: set[str], skill_names
                     raise DefinitionError(f"{label}.dispatch: {key} is required")
             if dispatch["per"] not in DISPATCH_PER:
                 raise DefinitionError(f"{label}.dispatch.per must be one of {sorted(DISPATCH_PER)}")
-        agents[name] = AgentSpec(name, bool(spec.get("produces")), requires, optional, dispatch)
+        agents[name] = AgentSpec(name, bool(spec.get("produces")), requires, optional, dispatch, writes)
     if planner not in agents:
         agents[planner] = AgentSpec(planner)
     if agents[planner].dispatch:
@@ -211,6 +219,21 @@ def required_contracts(profile: Profile, roster: Roster) -> dict[str, list[str]]
         for kind in profile.agents[agent].requires:
             out.setdefault(kind, []).append(agent)
     return out
+
+
+def fenced_fields(profile: Profile, roster: Roster) -> frozenset[str] | None:
+    """The frontmatter fields a run may change, when every stage declares ``writes``; else None.
+
+    A run made only of field writers (gap-agent, scorer) must leave concept bodies, other
+    fields and concepts outside its scope untouched (ADR 0004).
+    """
+    fields: set[str] = set()
+    for stage in roster.stages:
+        writes = profile.agents[stage].writes
+        if writes is None:
+            return None
+        fields.update(writes)
+    return frozenset(fields)
 
 
 def entry_stage(profile: Profile, roster: Roster) -> str:

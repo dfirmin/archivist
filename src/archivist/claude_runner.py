@@ -29,7 +29,10 @@ from archivist.config import ConfigError, resolve_auth
 from archivist.dispatch_check import check_entry_stage_ran, planned_groups, planner_gave_up
 from archivist.engine import Engine, ResolvedRun, load_engine, resolve_run
 from archivist.errors import ArchivistError, DefinitionError
+from archivist.profile import fenced_fields
+from archivist.record_gap import prune_gaps
 from archivist.run_plan import PLAN_REL, build_run_plan, write_run_plan
+from archivist.scope import GAP_STAGE, ScopeError, batches, bundle_file, fence_violations, select, snapshot
 from archivist.skills import install_skills, reset_path
 from archivist.stream import StreamMonitor
 from archivist.workspace import INBOX_DIR, PROCESSED_DIR
@@ -91,6 +94,7 @@ def prepare_agent_workspace(
     *,
     pipeline: str | None = None,
     authoring: bool | None = None,
+    kinds: Sequence[str] | None = None,
 ) -> PreparedWorkspace:
     """Validate contracts for the pipeline, install the engine, write the run plan.
 
@@ -99,7 +103,9 @@ def prepare_agent_workspace(
     workspace = workspace.resolve()
     run = resolve_run(workspace, pipeline=pipeline, authoring=authoring)
     agents = install_engine(workspace, run.engine, spawnable=run.roster.spawnable)
-    plan = write_run_plan(workspace, build_run_plan(run.engine.profile, run.roster, run.contracts))
+    plan = write_run_plan(
+        workspace, build_run_plan(run.engine.profile, run.roster, run.contracts, kinds=kinds)
+    )
     (workspace / PROCESSED_DIR).mkdir(parents=True, exist_ok=True)
     return PreparedWorkspace(run, tuple(sorted(run.engine.skills)), agents, plan)
 
@@ -309,18 +315,6 @@ def run_smoke_agent(
 # ---------------------------------------------------------------------------- conductor
 
 
-def _bundle_file(workspace: Path, rel: str, *, label: str) -> str:
-    """A bundle-relative path to an existing file inside ``workspace``."""
-    if not rel.strip() or Path(rel).is_absolute() or ".." in Path(rel).parts:
-        raise ValueError(f"{label} must be a bundle-relative path without '..': {rel!r}")
-    path = (workspace / rel).resolve()
-    if not path.is_relative_to(workspace.resolve()):
-        raise ValueError(f"{label} must resolve inside the workspace: {rel!r}")
-    if not path.is_file():
-        raise ValueError(f"{label} not found: {rel}")
-    return Path(rel).as_posix()
-
-
 def run_branch(inbox_file: str | None, *, now: datetime | None = None) -> str:
     """The branch a publishing run works on: the file stem for one document, else a timestamp."""
     if inbox_file:
@@ -334,7 +328,8 @@ def build_kickoff(
     *,
     inbox_file: str | None = None,
     inbox_limit: int = 0,
-    concept_file: str | None = None,
+    concept_files: Sequence[str] = (),
+    kinds: Sequence[str] | None = None,
     skip_publish: bool = False,
     branch: str | None = None,
     stages: tuple[str, ...] = (),
@@ -343,8 +338,14 @@ def build_kickoff(
     continue_branch: bool = False,
 ) -> str:
     """The conductor's first message: the job, in a few lines. The plan holds the rest."""
-    if concept_file:
-        work = f"Work: the concept `{concept_file}` already exists. Run the stages on it."
+    if len(concept_files) == 1:
+        work = f"Work: the concept `{concept_files[0]}` already exists. Run the stages on it."
+    elif concept_files:
+        listed = "\n".join(f"- `{c}`" for c in concept_files)
+        work = (
+            f"Work: these {len(concept_files)} existing concepts, one group each, in this order. "
+            f"Run the stages on each.\n{listed}"
+        )
     elif inbox_file:
         work = f"Work: author the inbox document `{inbox_file}`."
     elif inbox_limit > 0:
@@ -354,6 +355,8 @@ def build_kickoff(
     lines = [work, f"Plan: `{PLAN_REL.as_posix()}` (pipeline `{pipeline}`)."]
     if stages:
         lines.append(f"Stages: {', '.join(stages)}. Spawn only these, in this order.")
+    if kinds:
+        lines.append(f"Gap kinds: only {', '.join(kinds)} (the plan's `scope.kinds`).")
     if one_group:
         lines.append(
             "Scope: one group. Plan the queue, take only the first group through every stage, "
@@ -377,7 +380,9 @@ def run_conductor_agent(
     inbox_file: str | None = None,
     inbox_limit: int = 0,
     group_limit: int = 0,
-    concept_file: str | None = None,
+    concept_files: Sequence[str] = (),
+    kinds: Sequence[str] = (),
+    concept_batch: int = 10,
     skip_publish: bool = False,
     pipeline: str | None = None,
     continue_branch: bool = False,
@@ -391,20 +396,35 @@ def run_conductor_agent(
     if not workspace.is_dir():
         print(f"FAIL  workspace not found: {workspace}", file=sys.stderr)
         return 1
+    on_concepts = bool(concept_files)
     try:
+        if inbox_file and on_concepts:
+            raise ScopeError("--inbox-file and --concept do not combine")
+        if kinds and not on_concepts:
+            raise ScopeError("--kind applies to runs on existing concepts; name them with --concept")
         if inbox_file:
-            inbox_file = _bundle_file(workspace, inbox_file, label="inbox file")
-        if concept_file:
-            concept_file = _bundle_file(workspace, concept_file, label="concept file")
+            inbox_file = bundle_file(workspace, inbox_file, label="inbox file")
         prepared = prepare_agent_workspace(
-            workspace, pipeline=pipeline, authoring=concept_file is None
+            workspace, pipeline=pipeline, authoring=not on_concepts, kinds=kinds or None
         )
+        run = prepared.run
+        queue: list[tuple[str, ...]] = []
+        if on_concepts:
+            selection = select(
+                workspace, run.contracts, concepts=concept_files, kinds=kinds, stages=run.roster.stages
+            )
+            for rel, reason in selection.skipped:
+                print(f"skip      {rel} — {reason}")
+            if not selection.concepts:
+                print("PASS  nothing in scope; no session started")
+                return 0
+            queue = batches(selection.concepts, concept_batch)
         conductor = parse_agent(workspace / AGENTS_DIR_REL / f"{CONDUCTOR}.md")
-    except (ValueError, ArchivistError) as err:
+    except ArchivistError as err:
         print(f"FAIL  {err}", file=sys.stderr)
         return 1
-    run = prepared.run
     roster, profile = run.roster, run.engine.profile
+    fence = fenced_fields(profile, roster) if on_concepts else None
 
     resolved = _resolve_run_env(dict(os.environ))
     if resolved is None:
@@ -414,13 +434,14 @@ def run_conductor_agent(
 
     branch = env.get("RUN_BRANCH") or run_branch(inbox_file)
     env["RUN_BRANCH"] = branch
-    scanning_inbox = not (inbox_file or concept_file)
+    scanning_inbox = not (inbox_file or on_concepts)
 
-    def kickoff_for(*, limit: int, continue_branch: bool) -> str:
+    def kickoff_for(*, limit: int, continue_branch: bool, concepts: Sequence[str] = ()) -> str:
         return build_kickoff(
             inbox_file=inbox_file,
             inbox_limit=limit,
-            concept_file=concept_file,
+            concept_files=concepts,
+            kinds=kinds or None,
             skip_publish=skip_publish,
             branch=branch,
             stages=roster.stages,
@@ -432,13 +453,21 @@ def run_conductor_agent(
     if continue_branch and not env.get("RUN_BRANCH"):
         print("FAIL  --continue-branch needs RUN_BRANCH set to the branch to continue", file=sys.stderr)
         return 1
-    kickoff = kickoff_for(limit=inbox_limit, continue_branch=continue_branch and not skip_publish)
+    kickoff = kickoff_for(
+        limit=inbox_limit,
+        continue_branch=continue_branch and not skip_publish,
+        concepts=queue[0] if queue else (),
+    )
     print(f"workspace {workspace}")
     print(f"target    {run.contracts.slug}")
     print(f"model     {model or 'Claude Code default'}")
     print(f"pipeline  {roster.pipeline}: {', '.join(roster.stages)}")
     print(f"roster    {', '.join(roster.spawnable)}")
     print(f"contracts {', '.join(sorted(run.contracts.declared)) or 'none'}")
+    if on_concepts:
+        total = sum(len(b) for b in queue)
+        print(f"scope     {total} concept(s) in {len(queue)} session(s); kinds: {', '.join(kinds) or 'all'}")
+        print(f"fence     {', '.join(sorted(fence)) if fence is not None else 'off (a stage writes bodies)'}")
     print(f"plan      {prepared.plan.relative_to(workspace)}\n")
 
     def inbox_size() -> int | None:
@@ -455,11 +484,26 @@ def run_conductor_agent(
     while True:
         session += 1
         before = inbox_size()
-        if session > 1:
+        batch = queue[session - 1] if on_concepts else ()
+        if session > 1 and on_concepts:
+            kickoff = kickoff_for(limit=0, continue_branch=not skip_publish, concepts=batch)
+            print(f"\n=== session {session}: next {len(batch)} concept(s) ===\n")
+        elif session > 1:
             remaining = inbox_limit - consumed_total if inbox_limit else 0
             kickoff = kickoff_for(limit=remaining, continue_branch=not skip_publish)
             print(f"\n=== session {session}: next group ({before} inbox documents left) ===\n")
 
+        if on_concepts and GAP_STAGE in roster.stages:
+            # Deterministic, so not left to the conductor: a live run skipped the `before` rule's
+            # prune on one concept of three (ADR 0004).
+            try:
+                for rel in batch:
+                    for kind in prune_gaps(workspace / rel).removed:
+                        print(f"prune     {rel}: {kind} (no longer in, enabled for or applicable under the contract)")
+            except ArchivistError as err:
+                print(f"FAIL  {err}", file=sys.stderr)
+                return 1
+        fence_before = snapshot(workspace) if fence is not None else None
         monitor = StreamMonitor(required_agents=prepared.agents)
         code = launch_claude(
             build_claude_argv(model=model, agent=CONDUCTOR),
@@ -490,6 +534,17 @@ def run_conductor_agent(
         if stalled:
             print(f"FAIL  {stalled}", file=sys.stderr)
             return 1
+        if fence_before is not None and fence is not None:
+            problems = fence_violations(fence_before, snapshot(workspace), scope=batch, fields=fence)
+            if problems:
+                print(f"FAIL  write fence: this run may change only {', '.join(sorted(fence))}", file=sys.stderr)
+                for problem in problems:
+                    print(f"      - {problem}", file=sys.stderr)
+                return 1
+        if on_concepts:
+            if session >= len(queue):
+                break
+            continue
         if not scanning_inbox:
             break
         after = inbox_size() or 0
