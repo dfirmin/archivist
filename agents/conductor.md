@@ -43,8 +43,9 @@ several groups. Your own edits are bookkeeping only: the catalog, and what a sta
 ## 1. Take the queue
 
 - **One inbox document:** the queue is one group holding it; its slug is the file stem.
-- **An existing concept:** the queue is that concept; the producing stage is not in the
-  plan. Go to §2 with the concept as the group's only concept.
+- **Existing concepts:** the kickoff lists one or more; the queue is one group per concept,
+  in the listed order, each the group's only concept. The producing stage is not in the plan.
+  Go to §2. `scope.kinds` in the plan, when it is a list, limits every gap fleet to those kinds.
 - **Inbox scan:** spawn the plan's `planner`, description `plan-inbox`, prompt
   `Plan the queue: all inbox documents.` (or `at most N inbox documents.`). It replies
   `Groups: <n>` and each group's ordered documents. With `Scope: one group` the queue is
@@ -87,7 +88,8 @@ Only when the kickoff says to publish, in order:
 
 1. **knowledge-repo-git**: commit this group and push the branch.
 2. **open-pull-request**: open the PR after the first push, reuse it afterwards.
-3. **file-gap-issues**: one issue per `okfx_gaps` entry on this group's concepts.
+3. **file-gap-issues**: one issue per `okfx_gaps` entry on this group's concepts, and the open
+   issues of kinds this run judged absent closed.
 
 An empty diff has nothing to publish: skip all three. Mark the group's todo `completed`,
 then start the next group at §2.

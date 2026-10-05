@@ -220,6 +220,7 @@ All commands run inside the container through the wrappers in `scripts/`.
 | `archivist prepare-workspace <workspace> [--pipeline P]` | Install agents, skills and the run plan into `.claude/` |
 | `archivist run-conductor <workspace> […]` | Run the pipeline (live) |
 | `archivist record-gap <concept> --kind K …` | Write one gap verdict (used by gap-agents) |
+| `archivist prune-gaps <concept>` | Drop verdicts for kinds the contract no longer has or applies (run before a gap fleet) |
 | `archivist smoke-agent` | Prove headless Claude Code can spawn a sub-agent (live) |
 
 Common conductor runs (auth comes from `.env`):
@@ -228,7 +229,15 @@ Common conductor runs (auth comes from `.env`):
 ./scripts/run-conductor.sh                                                        # whole inbox, publish
 INBOX_LIMIT=1 SKIP_PUBLISH=1 ./scripts/run-conductor.sh
 PIPELINE=gaps SKIP_PUBLISH=1 CONCEPT_FILE='knowledge/…/overview.md' ./scripts/run-conductor.sh
+PIPELINE=gaps CONCEPTS=all KINDS=missing_escalation ./scripts/run-conductor.sh             # new or changed gap kind
+PIPELINE=rescore CONCEPTS=all ./scripts/run-conductor.sh                                # scoring contract changed
 ```
+
+When gap kinds or the scoring contract change, published concepts are re-judged without
+re-authoring them: `--concept` takes paths or `all`, `--kind` narrows the gap fleet, and
+the run may change only `okfx_gaps` and `okfx_confidence` (anything else fails it). Kinds
+removed from the contract are dropped from `okfx_gaps`, and their issues closed when a gap
+clears. See [ADR 0004](docs/adr/0004-scoped-gap-and-score-runs.md).
 
 `SKIP_PUBLISH=1` leaves git alone. Trusted git operations (`load-target`, remote
 `prepare-target`) go through `./scripts/publisher-run.sh`.
@@ -356,7 +365,8 @@ default. Run `./scripts/docker-run.sh config-check` to see which endpoint a run 
 | `GITHUB_TOKEN` | Used by the conductor for publishing (or the mounted `gh` login) |
 
 `run-conductor.sh` also reads `TARGET_SLUG`, `WORKSPACE`, `PIPELINE`, `INBOX_FILE`,
-`INBOX_LIMIT`, `GROUP_LIMIT`, `CONCEPT_FILE`, `SKIP_PUBLISH` and `RUN_BRANCH`.
+`INBOX_LIMIT`, `GROUP_LIMIT`, `CONCEPT_FILE`, `CONCEPTS`, `KINDS`, `CONCEPT_BATCH`,
+`SKIP_PUBLISH` and `RUN_BRANCH`.
 
 Targets are registered in [`targets.yaml`](targets.yaml).
 

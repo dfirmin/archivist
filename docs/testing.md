@@ -42,7 +42,8 @@ python -m pytest -q          # or ./tests/run.sh in Docker
 
 They cover the deterministic code only: auth resolution, contract loading and cross-checks,
 profile and roster, the run plan, engine pinning and versions, scaffold and upgrade,
-`record-gap`, `check-concept`, the dispatch check. Add one test per guardrail behaviour that
+`record-gap`, `prune-gaps`, `check-concept`, the dispatch check, concept/kind scope and the
+write fence. Add one test per guardrail behaviour that
 shows it refusing bad input. Don't write tests that restate a prompt or mock an agent's
 judgement; that is what live runs are for. The `examples/` targets double as fixtures, so keep
 them valid.
@@ -170,8 +171,18 @@ your edits.
 6. **Record the proof** in `docs/live-proof/<YYYY-MM-DD>.md`: engine version or SHA, target,
    documents, concept paths, PR and issue links, what you checked, what failed and what changed.
 
-Narrower runs: `--pipeline gaps --concept knowledge/<path>.md` re-judges gaps on an existing
-concept; `--inbox-limit N` / `--group-limit N` cap an inbox scan.
+Narrower runs: `--inbox-limit N` / `--group-limit N` cap an inbox scan. Runs on existing
+concepts (ADR 0004):
+
+```bash
+archivist run-conductor /tmp/kb --pipeline gaps --concept knowledge/<path>.md      # every kind, one concept
+archivist run-conductor /tmp/kb --pipeline gaps --concept all --kind <kind-id>     # one kind, every concept
+archivist run-conductor /tmp/kb --pipeline rescore --concept all                   # scores only
+```
+
+Check that `okfx_gaps` entries of kinds outside `--kind` are unchanged, that the run prints
+`fence okfx_gaps, okfx_confidence` (or `okfx_confidence`), and that a kind removed from the
+contract disappears from `okfx_gaps` on the next gap run.
 
 ## Testing an upgrade
 

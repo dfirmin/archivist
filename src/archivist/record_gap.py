@@ -1,10 +1,14 @@
-"""Deterministic `okfx_gaps` writes for the gap-agent fleet.
+"""Deterministic `okfx_gaps` writes for the gap-agent fleet: ``record-gap`` and ``prune-gaps``.
 
 Agents report a finding; this module serializes it. Hand-written YAML broke the
 frontmatter whenever a description carried `: `, and fifteen concurrent agents
 editing one mapping lost entries. Both are structural, so neither is the agent's
 problem to solve: the value is emitted by the YAML dumper and the read-modify-write
 runs under an exclusive lock on the concept.
+
+``prune-gaps`` runs before a fleet instead of wiping the list (ADR 0004): it drops entries
+whose kind the contract no longer has, has disabled, or no longer applies to the concept, so a
+run scoped to some kinds keeps every other kind's verdict.
 """
 
 from __future__ import annotations
@@ -202,18 +206,63 @@ def record_gap(
                     action = "updated"
 
             if action != "unchanged":
-                block = _emit_gaps(gaps)
-                bounds = _block_bounds(frontmatter)
-                if bounds is None:
-                    frontmatter = frontmatter + block
-                else:
-                    start, end = bounds
-                    frontmatter = frontmatter[:start] + block + frontmatter[end:]
-                handle.seek(0)
-                handle.truncate()
-                handle.write(f"{_DELIM}\n" + "".join(frontmatter) + "".join(rest))
-                handle.flush()
+                _write_gaps(handle, frontmatter, rest, gaps)
         finally:
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
     return RecordGapResult(kind=kind, action=action, gaps=len(gaps))
+
+
+def _write_gaps(handle: Any, frontmatter: list[str], rest: list[str], gaps: list[dict[str, Any]]) -> None:
+    block = _emit_gaps(gaps)
+    bounds = _block_bounds(frontmatter)
+    if bounds is None:
+        frontmatter = frontmatter + block
+    else:
+        start, end = bounds
+        frontmatter = frontmatter[:start] + block + frontmatter[end:]
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"{_DELIM}\n" + "".join(frontmatter) + "".join(rest))
+    handle.flush()
+
+
+@dataclass(frozen=True, slots=True)
+class PruneResult:
+    removed: tuple[str, ...]
+    gaps: int
+    created: bool
+
+
+def prune_gaps(concept: Path) -> PruneResult:
+    """Drop entries the gap-kinds contract no longer supports here; ensure the field exists."""
+    path = concept.resolve()
+    if not path.is_file():
+        raise RecordGapError(f"concept not found: {concept}")
+    contracts = _find_contracts(path)
+    kinds = {k["id"]: k for k in contracts.gap_kinds()["kinds"]}
+
+    with path.open("r+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            frontmatter, rest = _split_frontmatter(handle.read())
+            loaded = _load_frontmatter(frontmatter)
+            type_id = contracts.concept_type_id(str(loaded.get("type")))
+            if type_id is None:
+                raise RecordGapError(
+                    f"concept type {loaded.get('type')!r} is not in {contracts.rel('concept-types')}"
+                )
+            created = _GAPS_KEY not in loaded
+            gaps = _current_gaps(loaded)
+
+            def supported(gap: dict[str, Any]) -> bool:
+                spec = kinds.get(gap["kind"])
+                return bool(spec) and spec.get("enabled") is not False and type_id in spec["applies_to"]
+
+            kept = [gap for gap in gaps if supported(gap)]
+            removed = tuple(gap["kind"] for gap in gaps if not supported(gap))
+            if removed or created:
+                _write_gaps(handle, frontmatter, rest, kept)
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    return PruneResult(removed=removed, gaps=len(kept), created=created)

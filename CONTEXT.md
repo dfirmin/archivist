@@ -69,6 +69,15 @@ or replaces pipelines by name in its index.
 What one run may spawn: the pipeline's stages, plus the planner when the run authors from the
 inbox. Enforced through the conductor's `Agent(...)` allowlist.
 
+**Scope**:
+What a run on existing concepts covers: the concepts (`--concept`, paths or `all`) and,
+for the gap fleet, the kinds (`--kind`, default every enabled applicable kind). Recorded in
+the run plan as `scope.kinds`. See ADR 0004.
+
+**Write fence**:
+The check on a run whose every stage declares `writes` in the profile: concept bodies, other
+frontmatter fields and concepts outside the session's scope must be unchanged after it.
+
 **Run plan**:
 `.claude/archivist/run-plan.yaml`, generated per run: stages in order with their dispatch
 rules, contract paths, reference names, enrichment methods. The conductor follows it.

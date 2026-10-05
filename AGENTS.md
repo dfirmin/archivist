@@ -21,8 +21,9 @@ engine runs many targets without engine changes.
    Add any other deterministic step only after a **live** failure shows an agent cannot be made
    reliable, and record the failure and the decision in `docs/adr/`. Today there are
    these: contract validation, engine pinning, the entry-stage dispatch check, `record-gap`
-   (YAML serialization under a lock) and `check-concept` (frontmatter checked after an agent
-   writes it).
+   and `prune-gaps` (YAML serialization under a lock), `check-concept` (frontmatter checked
+   after an agent writes it), scope resolution for runs on existing concepts and the write
+   fence on runs whose stages only set frontmatter (ADR 0004).
 3. **Contracts are flexible by default.** Only `contracts/target.yaml` is required. Every other
    contract is required only when an agent in the chosen pipeline lists it under `requires` in
    `agents/profile.yaml`. Never make a contract mandatory for every target.
@@ -72,6 +73,7 @@ docs/adr/        decisions, especially every deterministic step
 | An agent | `agents/<name>.md` written per [the authoring guide](docs/authoring-agents-and-skills.md), a profile entry with `requires` and `dispatch`, live proof | an agent tied to one target |
 | A skill | `skills/<name>/SKILL.md` written per [the authoring guide](docs/authoring-agents-and-skills.md), named in the `skills` of the agents that always need it, live proof | a skill for one target or one domain |
 | A stage behaviour | the agent's `dispatch` in `profile.yaml` (the conductor reads it from the run plan) | stage names hard-coded in `conductor.md` |
+| A stage that only sets frontmatter | `writes: [<fields>]` on its profile entry, so runs of such stages are fenced | a stage that sets fields without declaring them |
 | An enrichment method | `enrichment_methods` in `profile.yaml` plus its skills; structures name it in `enrich.method` | a method that decides where its output goes (the structure does) |
 | A frontmatter field | declare it in the target's concept type with the `okfx_` prefix | a non-OKF field without the prefix |
 
@@ -118,8 +120,8 @@ The short version:
 
 - **Offline tests** cover the deterministic code, and only that: auth resolution, contract
   loading and cross-checks, profile and roster resolution, the run plan, engine pinning and
-  versions, scaffold and upgrade, `record-gap` (locking, YAML), `check-concept`, the dispatch
-  check. One test per guardrail behaviour; no tests that restate a prompt, count lines in a
+  versions, scaffold and upgrade, `record-gap` and `prune-gaps` (locking, YAML),
+  `check-concept`, the dispatch check, concept/kind scope and the write fence. One test per guardrail behaviour; no tests that restate a prompt, count lines in a
   skill, or mock an agent's judgement. When you add a guardrail, add the test that shows it
   refusing bad input. `examples/` targets double as fixtures: keep them valid.
 - **Live tests** run on a test target (never a team's real repo) with a mix of messy and
@@ -139,7 +141,7 @@ read, and what you checked:
 | author | the path, type, tags and okfx_ fields follow the target's contracts; sections follow the structure and their owners; the document moved to `sources/processed/` and is in `sources`; `okfx_gaps`, `okfx_confidence`, `verified` untouched |
 | enricher | only `owner: enricher` sections changed; rows cite a file at a commit; clones removed |
 | verifier | lost source content restored, cited, under existing headings; one `verified` entry appended; nothing else in frontmatter |
-| gap-agent | one kind; the write went through `record-gap`; body unchanged |
+| gap-agent | one kind; the write went through `record-gap`; body unchanged; a `--kind` run touched only that kind's entry |
 | scorer | `okfx_confidence` set per the scoring contract; nothing else changed |
 | conductor | stages dispatched in run-plan order; the gap fleet spawned in one message; `SKIP_PUBLISH=1` leaves git alone; a publish run leaves one branch, one PR, one issue per gap, no duplicates on re-run |
 

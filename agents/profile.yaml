@@ -2,10 +2,12 @@
 # dispatches it. Engine-owned. A target picks or defines pipelines from these agents in
 # contracts/target.yaml; it never adds an agent.
 #
-# Python reads this file for three things only:
+# Python reads this file for four things only:
 #   - roster: the conductor's Agent(...) allowlist for the chosen pipeline;
 #   - requires: which contracts the chosen pipeline needs (missing = the run refuses);
-#   - dispatch: copied verbatim into the run plan the conductor follows.
+#   - dispatch: copied verbatim into the run plan the conductor follows;
+#   - writes: the frontmatter fields a stage may change. A run whose every stage declares
+#     `writes` is fenced: nothing else in knowledge/ may change (ADR 0004).
 # The conductor, not Python, carries out the dispatch rules.
 version: 1
 coordinator: conductor
@@ -58,13 +60,16 @@ agents:
   gap-agent:
     requires: [gap-kinds, concept-types]
     optional: [reference]
+    writes: [okfx_gaps]
     dispatch:
       per: gap-kind
       parallel: true
       before: >-
-        Read the gap-kinds contract. The fleet is every kind with `enabled` not false whose
-        `applies_to` holds this concept's type id (concept-types maps the concept's `type` to its
-        id). Set `okfx_gaps: []` on the concept, then spawn the whole fleet in one message.
+        Run `archivist prune-gaps "{concept_path}"` (it drops entries for kinds the contract no
+        longer applies here; never edit `okfx_gaps` yourself). Read the gap-kinds contract. The
+        fleet is every kind with `enabled` not false whose `applies_to` holds this concept's
+        type id (concept-types maps the concept's `type` to its id), narrowed to the run plan's
+        `scope.kinds` when that is a list. Spawn the whole fleet in one message.
       description: "gap-{kind}-{concept}"
       prompt: "Judge only kind {kind} on {concept_path}."
       done_when: Every kind returned present true or false.
@@ -74,6 +79,7 @@ agents:
 
   scorer:
     requires: [scoring, gap-kinds]
+    writes: [okfx_confidence]
     dispatch:
       per: concept
       description: "score-{concept}"
@@ -86,7 +92,8 @@ pipelines:
   full: [author, enricher, verifier, gap-agent, scorer]
   author-verify: [author, verifier]
   enrich: [enricher]
-  gaps: [gap-agent, scorer]
+  gaps: [gap-agent, scorer]   # re-judge gaps on existing concepts, then re-score
+  rescore: [scorer]           # re-score existing concepts after a scoring-contract change
 
 # Enrichment methods a structure section may name in `enrich.method`. The enricher loads
 # the listed skills; the contract says where the result goes.

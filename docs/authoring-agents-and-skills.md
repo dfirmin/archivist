@@ -103,8 +103,8 @@ Every agent that writes concept text works from evidence it can point to:
 ## 7. Commands, not prose
 
 A fragile, must-be-exact operation is a command the agent runs, not a paragraph it follows:
-`archivist record-gap` (YAML under a lock), `archivist check-concept` (frontmatter against
-contracts). Add a new deterministic step only after a live failure shows an agent cannot be
+`archivist record-gap` and `archivist prune-gaps` (YAML under a lock), `archivist
+check-concept` (frontmatter against contracts). Add a new deterministic step only after a live failure shows an agent cannot be
 made reliable, and record the decision in `docs/adr/` (AGENTS.md rule 2). Scripts handle
 their own errors and print a specific message; the agent fixes what the message names.
 
