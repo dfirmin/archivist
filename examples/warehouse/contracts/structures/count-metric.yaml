@@ -1,0 +1,13 @@
+id: count-metric
+description: A metric that counts or sums one thing at a point or over a period.
+sections:
+  - Definition
+  - heading: What Is Counted
+    description: The thing counted and the condition that makes it count.
+  - Grain & Time Window
+  - heading: Data Sources
+    description: The views or tables the source names for this metric.
+  - heading: Exclusions
+    required: false
+  - heading: Known Issues
+    required: false

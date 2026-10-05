@@ -3,4 +3,7 @@ entity,subject_area,source_repo
 CUSTCASE,customer-care,https://github.com/example-org/sample-case-etl
 CUSTCASE_INCRMTL_SV,customer-care,https://github.com/example-org/sample-case-etl
 CUSTOMER_CONTACT_VIEW,customer-care,
+CLAIM_HDR_SV,claims,https://github.com/example-org/sample-claims-etl
+CLAIM_PMT_SV,claims,https://github.com/example-org/sample-claims-etl
+POLICY_EXPOSURE_SV,claims,
 LEGACY_FEED,UNKNOWN,

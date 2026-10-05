@@ -1,7 +1,7 @@
 version: 1
 kinds:
   - id: missing_section
-    applies_to: [business-view-group-overview, subject-area-overview]
+    applies_to: [business-view-group-overview, subject-area-overview, metric-definition, business-rule]
     definition: A required section has no substantive content.
     origins: [author, documentation]
     context: [the concept body, the cited sources]
@@ -38,3 +38,20 @@ kinds:
     detection:
       - None of the systems registered for the concept's subject area is named
     priority: high
+  - id: missing_formula_part
+    applies_to: [metric-definition]
+    definition: A ratio metric does not say what its numerator or denominator is.
+    origins: [author, documentation]
+    context: [okfx_structure, Numerator, Denominator, the cited sources]
+    detection:
+      - Only ratio-metric definitions are judged; a count-metric is absent by definition
+      - Numerator or Denominator is empty, a stub, or names a quantity without saying what is included
+    priority: high
+  - id: missing_effective_date
+    applies_to: [business-rule]
+    definition: A business rule, or a change to it, has no date it takes effect.
+    origins: [author, documentation]
+    context: [Effective Dates, the cited sources]
+    detection:
+      - The rule, or any change the concept records, has no effective date in Effective Dates
+    priority: medium

@@ -2,3 +2,5 @@
 terms:
   CRM: customer relationship management
   case: A tracked request for customer assistance
+  earned premium: The portion of written premium that corresponds to the coverage period already elapsed
+  total loss: A vehicle whose repair cost exceeds the share of its actual cash value set by rule

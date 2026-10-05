@@ -3,3 +3,8 @@ subject_areas:
   customer-care:
     - name: Sample CRM
       description: Authoritative source for customer contacts and cases
+  claims:
+    - name: Sample Claims Platform
+      description: Authoritative source for claims, reserves and payments
+    - name: Sample Policy Admin
+      description: Policies, premiums and exposure

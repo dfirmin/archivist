@@ -1,0 +1,15 @@
+id: business-rule
+description: One business rule for one line of business, as approved.
+sections:
+  - heading: Rule Statement
+    description: What the rule requires, in the source's words, including any thresholds.
+  - Applies To
+  - heading: Exceptions
+    required: false
+  - heading: Effective Dates
+    description: When the rule, and each change to it, takes effect.
+  - heading: Data Implementation
+    required: false
+    description: Views, columns or flags that implement the rule, as the source names them.
+  - heading: Rationale
+    required: false

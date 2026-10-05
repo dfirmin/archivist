@@ -56,6 +56,21 @@ reference:
       Lookup order for a physical identifier token: naming-standards, then a cited source that
       explicitly expands it, else undefined. For a business term: glossary, then naming-standards,
       then a cited source, else undefined. A bare acronym in a source is not a definition.
+  metrics:
+    path: reference/metrics.csv
+    columns: [metric_code, metric_name, subject_area]
+    description: Approved metrics with their code and subject area.
+    guidance: |
+      Look a metric up by its code or its name, case-insensitively, also matching common
+      abbreviations the document uses for the name (LR for Loss Ratio).
+      - No row: the metric is not approved; it is out of scope. Say "no metrics row for <name>".
+      - Otherwise metric_code is the metric's identity and subject_area its owners slug.
+  lines-of-business:
+    path: reference/lines-of-business.yaml
+    description: The lines of business a rule can apply to (key → name).
+    guidance: |
+      A rule's line of business is a key under lines_of_business, matched by key or name to what
+      the document states. A document that states none has no value: never infer one.
   source-systems:
     path: reference/source-systems.yaml
     description: Registered source systems per subject-area slug.

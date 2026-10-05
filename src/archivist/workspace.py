@@ -307,7 +307,9 @@ def _refresh_examples(workspace: Path, engine_root: Path, readme: str | None,
         put(f"{_EXAMPLES_DIR}/README.md", readme)
     examples = engine_root / "examples"
     for example in sorted(p for p in examples.iterdir() if (p / "contracts").is_dir()) if examples.is_dir() else ():
-        for source in sorted([*(example / "contracts").rglob("*"), *(example / "sources").rglob("*")]):
+        readme = example / "README.md"  # what the example shows, expected outcomes, last tested
+        extra = [readme] if readme.is_file() else []
+        for source in sorted([*extra, *(example / "contracts").rglob("*"), *(example / "sources").rglob("*")]):
             if source.is_file():
                 put(f"{_EXAMPLES_DIR}/{example.name}/{source.relative_to(example).as_posix()}",
                     source.read_text(encoding="utf-8"))

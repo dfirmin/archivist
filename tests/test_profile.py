@@ -31,7 +31,7 @@ def test_target_pipeline_may_reorder_and_opt_out(warehouse: Path) -> None:
     edit_yaml(warehouse / "contracts/target.yaml", lambda d: d["pipelines"].update({"lean": ["author", "scorer"]}))
     run = resolve_run(warehouse, engine=ENGINE, pipeline="lean")
     assert run.roster.stages == ("author", "scorer")
-    assert run.roster.spawnable == ("intake-planner", "author", "scorer")
+    assert run.roster.spawnable == ("intake-planner", "extractor", "author", "scorer")
 
 
 def test_target_pipeline_cannot_name_a_non_engine_agent(warehouse: Path) -> None:
@@ -77,7 +77,7 @@ def test_coordinator_roster_replaces_bare_agent_tool() -> None:
 def test_prepare_workspace_installs_engine_and_plan(warehouse: Path) -> None:
     prepared = prepare_agent_workspace(warehouse, pipeline="no-code")
     conductor = (warehouse / ".claude/agents/conductor.md").read_text(encoding="utf-8")
-    assert "Agent(intake-planner, author, verifier, gap-agent, scorer)" in conductor
+    assert "Agent(intake-planner, extractor, author, verifier, gap-agent, scorer)" in conductor
     assert (warehouse / ".claude/skills/target-contracts/SKILL.md").is_file()
     plan = yaml.safe_load(prepared.plan.read_text(encoding="utf-8"))
     assert [s["agent"] for s in plan["stages"]] == ["author", "verifier", "gap-agent", "scorer"]
@@ -130,16 +130,18 @@ def _add_class(handbook: Path, cls: dict) -> None:
     edit_yaml(handbook / "contracts/intake.yaml", lambda d: d["classes"].append(dict(cls)))
 
 
-def test_extractor_joins_the_roster_only_when_the_intake_extracts(handbook: Path) -> None:
-    plain = resolve_run(handbook, engine=ENGINE, pipeline="author-verify")
+def test_extractor_joins_the_roster_only_when_the_intake_extracts(minimal: Path, handbook: Path) -> None:
+    plain = resolve_run(minimal, engine=ENGINE)  # no intake contract, so nothing to extract
     assert "extractor" not in plain.roster.spawnable and not plain.roster.extracting
-    _add_class(handbook, TRANSCRIPT_CLASS)
     run = resolve_run(handbook, engine=ENGINE, pipeline="author-verify")
     assert run.roster.spawnable == ("intake-planner", "extractor", "author", "verifier")
     on_concepts = resolve_run(handbook, engine=ENGINE, pipeline="full", authoring=False)
     assert "extractor" not in on_concepts.roster.spawnable  # nothing is extracted on existing concepts
     plan = yaml.safe_load(prepare_agent_workspace(handbook, pipeline="author-verify").plan.read_text(encoding="utf-8"))
     assert plan["extractor"] == "extractor"
+    edit_yaml(handbook / "contracts/intake.yaml",
+              lambda d: d.update(classes=[c for c in d["classes"] if c["mode"] != "extract"]))
+    assert not resolve_run(handbook, engine=ENGINE, pipeline="author-verify").roster.extracting
 
 
 def test_an_extract_class_names_no_concept_type_or_sections(handbook: Path) -> None:

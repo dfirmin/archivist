@@ -1,0 +1,5 @@
+# Fictional example. Lines of business a business rule can apply to.
+lines_of_business:
+  auto: Personal auto
+  home: Homeowners
+  commercial: Commercial property
