@@ -58,13 +58,19 @@ def _concept_type(path: Path) -> Any:
 
 
 def published_concepts(workspace: Path, contracts: TargetContracts) -> list[tuple[str, str]]:
-    """(bundle-relative path, concept-type id) for every concept under ``knowledge/``."""
+    """(bundle-relative path, concept-type id) for every authored concept under ``knowledge/``.
+
+    Only ``authored: true`` types count: companions (stubs a concept type creates beside the
+    authored one) never pass through the gap fleet or the scorer in a full run either. A live
+    ``--concept all`` run picked them up and would have scored stubs.
+    """
+    types = contracts.concept_types()
     root = workspace / KNOWLEDGE_DIR
     found = []
     for path in sorted(root.rglob("*.md")) if root.is_dir() else ():
         okf_type = _concept_type(path)
         type_id = contracts.concept_type_id(str(okf_type)) if okf_type else None
-        if type_id is not None:
+        if type_id is not None and types[type_id].get("authored"):
             found.append((path.relative_to(workspace).as_posix(), type_id))
     return found
 

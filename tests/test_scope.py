@@ -40,6 +40,7 @@ def corpus(warehouse: Path) -> Path:
     write(warehouse, GROUP, "Business View Group Overview")
     write(warehouse, AREA, "Subject Area Overview")
     write(warehouse, "knowledge/notes/readme.md", "Not A Concept Type")
+    write(warehouse, "knowledge/subject-areas/customer-care/business-views/Customer Case/v.md", "View")
     return warehouse
 
 

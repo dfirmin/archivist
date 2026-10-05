@@ -30,8 +30,9 @@ from archivist.dispatch_check import check_entry_stage_ran, planned_groups, plan
 from archivist.engine import Engine, ResolvedRun, load_engine, resolve_run
 from archivist.errors import ArchivistError, DefinitionError
 from archivist.profile import fenced_fields
+from archivist.record_gap import prune_gaps
 from archivist.run_plan import PLAN_REL, build_run_plan, write_run_plan
-from archivist.scope import ScopeError, batches, bundle_file, fence_violations, select, snapshot
+from archivist.scope import GAP_STAGE, ScopeError, batches, bundle_file, fence_violations, select, snapshot
 from archivist.skills import install_skills, reset_path
 from archivist.stream import StreamMonitor
 from archivist.workspace import INBOX_DIR, PROCESSED_DIR
@@ -492,6 +493,16 @@ def run_conductor_agent(
             kickoff = kickoff_for(limit=remaining, continue_branch=not skip_publish)
             print(f"\n=== session {session}: next group ({before} inbox documents left) ===\n")
 
+        if on_concepts and GAP_STAGE in roster.stages:
+            # Deterministic, so not left to the conductor: a live run skipped the `before` rule's
+            # prune on one concept of three (ADR 0004).
+            try:
+                for rel in batch:
+                    for kind in prune_gaps(workspace / rel).removed:
+                        print(f"prune     {rel}: {kind} (no longer in, enabled for or applicable under the contract)")
+            except ArchivistError as err:
+                print(f"FAIL  {err}", file=sys.stderr)
+                return 1
         fence_before = snapshot(workspace) if fence is not None else None
         monitor = StreamMonitor(required_agents=prepared.agents)
         code = launch_claude(

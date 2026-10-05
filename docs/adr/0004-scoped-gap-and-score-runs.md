@@ -24,7 +24,8 @@ out) and ships a `gaps` pipeline. Three things stopped that from being the answe
 
 1. **Scope has two independent axes.** `run-conductor --concept` takes one or more
    bundle-relative concept paths, or `all` for every concept under `knowledge/` whose `type` is
-   a concept type. `--kind` (repeatable) limits the gap fleet to those kind ids; without it the
+   an `authored: true` concept type (companion stubs are never judged or scored in a full run
+   either). `--kind` (repeatable) limits the gap fleet to those kind ids; without it the
    fleet is every enabled, applicable kind. `--kind` needs a pipeline with `gap-agent` and kind
    ids the gap-kinds contract holds and has enabled. The run plan carries the scope
    (`scope.kinds`); the conductor reads it like any other dispatch rule.
@@ -38,8 +39,10 @@ out) and ships a `gaps` pipeline. Three things stopped that from being the answe
 4. **Verdicts are replaced per kind, never wiped.** The fleet's `before` rule runs
    `archivist prune-gaps <concept>` instead of setting `okfx_gaps: []`. `prune-gaps` removes
    entries whose kind is no longer in the contract, is disabled, or no longer applies to the
-   concept's type, and writes `okfx_gaps: []` when the field is missing. Each gap-agent then
-   replaces only its kind through `record-gap`, as before. A run scoped to kind X changes only
+   concept's type, and writes `okfx_gaps: []` when the field is missing. On a run over
+   existing concepts Python also prunes every selected concept before each session: in the
+   first live run the conductor skipped the `before` rule's prune on one concept of three.
+   Each gap-agent then replaces only its kind through `record-gap`, as before. A run scoped to kind X changes only
    X's entry; a failed agent leaves its kind's previous verdict in place.
 5. **Stages declare what they write; a run of writers-of-fields-only is fenced.** A stage
    agent may list `writes:` in `agents/profile.yaml` (`gap-agent: [okfx_gaps]`, `scorer:
