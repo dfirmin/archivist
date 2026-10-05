@@ -33,7 +33,7 @@ The run plan (`.claude/archivist/run-plan.yaml`) lists the same paths bundle-rel
 |---|---|---|
 | `concept-types` | each concept type: OKF `type`, `path`, `structures` + `structure_rule`, `tags`, `fields` (with `from`), `companions` | none — authoring needs it |
 | `structures` (directory) | one file per structure: `sections`, each with `owner` (author, enricher, placeholder), `placeholder`, `enrich`, `subsections` | none — authoring needs it |
-| `intake` | `scope`, `grouping`, `ordering`, `naming`, and `classes`: each class's `concept_type` (else the default `concept_type`), mode and routed sections | every document in scope, its own group, one class `create` / all sections |
+| `intake` | `scope`, `grouping`, `ordering`, `naming`, and `classes`: each class's `concept_type` (else the default `concept_type`), mode and routed sections; a class with `mode: extract` has an `extract` rule instead (ADR 0006) | every document in scope, its own group, one class `create` / all sections |
 | `gap-kinds` | the gap fleet (see the **gap-kinds** skill) | no gap stage |
 | `scoring` | the confidence rubric | no score stage |
 | `catalog` | index grouping and log wording | group the index by concept type |

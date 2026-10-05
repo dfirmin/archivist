@@ -3,7 +3,7 @@ index:
   title: Subject areas
   group_by: okfx_subject_area
   group_heading: Title-case the slug (customer-care → Customer Care).
-  include: [business-view-group-overview, subject-area-overview]
+  include: [business-view-group-overview, subject-area-overview, metric-definition, business-rule]
   suffix_field: okfx_confidence
 log:
   guidance: Put the subject area in brackets in the prose when the path does not make it obvious.

@@ -39,6 +39,19 @@ def planned_groups(monitor: StreamMonitor, planner: str) -> int | None:
     return max(int(match.group(1)), len(_GROUP_LINE.findall(text)))
 
 
+_DOC_LINE = re.compile(r"^\s*-\s*`?(sources/inbox/[^\s`]+\.md)`?", re.MULTILINE)
+
+
+def first_group_documents(monitor: StreamMonitor, planner: str) -> list[str]:
+    """The documents the planner listed under its first group (empty when it listed none)."""
+    text = _planner_reply(monitor, planner) or ""
+    starts = [m.start() for m in _GROUP_LINE.finditer(text)]
+    if not starts:
+        return []
+    end = starts[1] if len(starts) > 1 else len(text)
+    return _DOC_LINE.findall(text[starts[0]:end])
+
+
 def planner_gave_up(monitor: StreamMonitor, planner: str) -> bool:
     """``Groups: 0`` over a non-empty inbox is malformed: the planner puts every document in a
     group, out-of-scope ones in a group of their own for the author to quarantine (ADR 0005).
@@ -61,6 +74,8 @@ def check_entry_stage_ran(
     stage = entry_stage(profile, roster)
     if stage in monitor.dispatched_agents:
         return None
+    if roster.extracting and profile.extractor in monitor.dispatched_agents:
+        return None  # an extraction session ends before authoring (ADR 0006 §4)
     if inbox_documents == 0 or planned_groups(monitor, profile.planner) == 0:
         return None
     return (

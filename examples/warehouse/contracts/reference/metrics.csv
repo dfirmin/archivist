@@ -1,0 +1,6 @@
+# Fictional example. Approved metrics: the code is the metric's identity; subject_area is an owners slug.
+metric_code,metric_name,subject_area
+LOSS_RATIO,Loss Ratio,claims
+CLAIM_FREQ,Claim Frequency,claims
+OPEN_CLAIM_CNT,Open Claim Count,claims
+CASE_REOPEN_RATE,Case Reopen Rate,customer-care

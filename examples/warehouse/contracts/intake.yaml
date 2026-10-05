@@ -1,23 +1,32 @@
 version: 1
-# The default concept type; a class can route elsewhere (see subject-area-description below).
+# The default concept type; classes route metrics, rules and subject areas elsewhere, and
+# meeting transcripts to the extractor (ADR 0006).
 concept_type: business-view-group-overview
 scope: |
   A view document is in scope when every physical view it names has an inventory row whose
   subject_area is an owners slug. A view with no row, or with UNKNOWN, puts the document out of
   scope; name that view and say what its row needs (a row, or a subject area for an UNKNOWN one).
   A subject-area document is in scope when the subject area it describes is an owners slug.
+  A metric document is in scope when its metric has a metrics row.
+  A business-rule document is in scope when the subject area it concerns is an owners slug.
 grouping: |
   Documents describing one business view are one group: the same physical view, a view and its
-  _INCRMTL_ sibling, or documents linked by catalog_parent_document_id.
-ordering: The essential-information document first, then the rest by file name.
-naming: The business name from the title or body, as a concrete folder string (e.g. Customer Case).
+  _INCRMTL_ sibling, or documents linked by catalog_parent_document_id. Documents about one
+  metric (by metric code) are one group, and so are a rule and the amendments to it (same rule
+  id and line of business). An extract (it has `extracted_from`) joins the group of the view,
+  metric or rule it is about.
+ordering: The primary document first (essential information, the metric or rule document), then amendments and extracts, then the rest by file name.
+naming: |
+  Views: the business name from the title or body, as a concrete folder string (e.g. Customer
+  Case). Metrics: the metric_name from metrics. Rules: the rule's name without its id. Subject
+  areas: the subject area's name.
 classes:
   - id: essential-info
     description: The primary document for a view — purpose, grain, sources, rules.
     mode: create
     sections: all
   - id: attribute-notes
-    description: Column- or attribute-level notes.
+    description: Column- or attribute-level notes about a view.
     mode: partial
     sections: [Attribute Information]
   - id: header-vs-detail
@@ -41,3 +50,26 @@ classes:
     concept_type: subject-area-overview   # routed to a different concept type than the default
     mode: create
     sections: all
+  - id: metric-definition
+    description: Defines a metric or KPI, or changes how one is calculated.
+    concept_type: metric-definition       # the type then picks ratio-metric or count-metric by content
+    mode: create
+    sections: best-fit
+  - id: business-rule
+    description: States a business rule with its id (a BR-… document).
+    concept_type: business-rule
+    mode: create
+    sections: all
+  - id: rule-amendment
+    description: Changes an existing business rule (a new threshold, date or exception).
+    concept_type: business-rule
+    mode: enrich-only          # waits for the rule it amends
+    sections: best-fit
+  - id: meeting-transcript
+    description: >-
+      A verbatim transcript of a recorded meeting or call: timestamped lines, each with a speaker.
+      Notes, emails and chat threads are not transcripts.
+    mode: extract
+    extract: >-
+      Keep passages that define, change or question a physical view, a metric or a business
+      rule, one extract per view, metric or rule. Drop scheduling, introductions and small talk.

@@ -1,10 +1,27 @@
-# Fictional example.
+# Fictional example. Teams that own handbook content; changes are made by pull request.
 teams:
   platform:
     name: Platform Engineering
+    aliases: [platform team, infra, SRE]
     lead: platform-lead@example.com
     on_call: "#platform-oncall"
   people-ops:
     name: People Operations
+    aliases: [HR, people team]
     lead: people-ops@example.com
     on_call: "#people-help"
+  finance-ops:
+    name: Finance Operations
+    aliases: [finance, AP, accounts payable]
+    lead: finance-ops@example.com
+    on_call: "#finance-help"
+  security:
+    name: Security
+    aliases: [infosec, security team, SecOps]
+    lead: security-lead@example.com
+    on_call: "#security-incidents"
+  data-engineering:
+    name: Data Engineering
+    aliases: [data eng, DE, data platform]
+    lead: data-eng-lead@example.com
+    on_call: "#data-eng-oncall"

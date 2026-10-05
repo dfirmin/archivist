@@ -8,13 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from archivist.dispatch_check import check_entry_stage_ran, planned_groups, planner_gave_up
+from archivist.dispatch_check import check_entry_stage_ran, first_group_documents, planned_groups, planner_gave_up
 from archivist.engine import load_engine, resolve_run
 from archivist.engines import EngineVersionError
 from archivist.errors import ContractError, WorkspaceError
 from archivist.stream import StreamMonitor
 from archivist.targets import Target
 from archivist.workspace import ScaffoldState, detect_scaffold_state, scaffold_workspace
+from conftest import edit_yaml
 
 ENGINE = load_engine()
 
@@ -36,6 +37,17 @@ def test_entry_stage_must_dispatch(warehouse: Path) -> None:
     assert "without spawning 'author'" in check_entry_stage_ran(planned, ENGINE.profile, roster, inbox_documents=3)
     ran = monitor_with([("intake-planner", "Groups: 1\nGroup 1: x"), ("author", "Authored: 1")])
     assert check_entry_stage_ran(ran, ENGINE.profile, roster, inbox_documents=3) is None
+
+
+def test_an_extraction_session_counts_as_work(handbook: Path) -> None:
+    edit_yaml(handbook / "contracts/intake.yaml", lambda d: d["classes"].append(
+        {"id": "call", "description": "A call transcript.", "mode": "extract", "extract": "Keep policies."}))
+    roster = resolve_run(handbook, engine=ENGINE, pipeline="author-verify").roster
+    extracted = monitor_with([("intake-planner", "Groups: 1\nGroup 1: extract — a call\n- a.md"),
+                              ("extractor", "Extracted: 2 from a.md")])
+    assert check_entry_stage_ran(extracted, ENGINE.profile, roster, inbox_documents=1) is None
+    planned_only = monitor_with([("intake-planner", "Groups: 1\nGroup 1: extract — a call\n- a.md")])
+    assert "without spawning 'author'" in check_entry_stage_ran(planned_only, ENGINE.profile, roster, inbox_documents=1)
 
 
 def test_empty_queue_is_a_clean_exit(warehouse: Path) -> None:
@@ -202,3 +214,11 @@ def test_a_pin_moves_only_through_upgrade(tmp_path: Path, monkeypatch: pytest.Mo
     assert "quarantine/README.md" in result.written  # the missing layout note is seeded
     with pytest.raises(EngineVersionError, match="development build"):
         upgrade_target(target_slug="acme", workspace=workspace, pin="v1.2.4.dev1", registry_path=registry, local=True)
+
+
+def test_the_first_group_is_read_from_the_planner_reply() -> None:
+    reply = ("Groups: 2\nGroup 1: out-of-scope — amendment awaiting its rule\n- sources/inbox/re-br-hom-022.md\n"
+             "Group 2: custcase — Customer Case\n- `sources/inbox/a.md`\n- sources/inbox/b.md")
+    assert first_group_documents(monitor_with([("intake-planner", reply)]), "intake-planner") == [
+        "sources/inbox/re-br-hom-022.md"]
+    assert first_group_documents(monitor_with([("intake-planner", "Groups: 0")]), "intake-planner") == []

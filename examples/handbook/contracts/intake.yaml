@@ -1,16 +1,28 @@
 version: 1
 # No default concept_type: every class says which concept type its documents become.
-scope: A document is in scope when the team it names as owner is listed in teams; otherwise it is out of scope until that team is added.
-grouping: Each document is its own concept, except a policy amendment, which joins the policy it amends.
-naming: The document's title without dates or version numbers, in title case.
+scope: >-
+  A document is in scope when its owning team is listed in teams (match by key, name or alias; a
+  chat or email with no stated owner belongs to the team its participants clearly speak for).
+  Otherwise it is out of scope until that team is added.
+grouping: >-
+  Each document is its own concept, except a policy amendment, which joins the policy it amends,
+  and an extract from a call, which joins the document about the same policy or runbook.
+naming: >-
+  A short, plain title for what the document governs or explains, in title case, without dates,
+  version numbers or words like "Re:", "Fwd:" or "notes". Messy sources often have no usable
+  title: name the concept for its subject.
 classes:
   - id: policy-document
-    description: States rules people must follow (a policy, standard or guideline).
+    description: >-
+      States rules people must follow (a policy, standard or guideline) as a policy in its own
+      right, not as a change to one.
     concept_type: policy
     mode: create
     sections: all
   - id: policy-amendment
-    description: Changes an existing policy.
+    description: >-
+      Changes an existing policy: it says what the rule was, or that it updates, replaces or
+      extends a policy, even when it restates the whole new rule.
     concept_type: policy
     mode: enrich-only          # never creates a policy on its own; waits for the policy itself
     sections: best-fit
@@ -19,3 +31,15 @@ classes:
     concept_type: runbook      # the runbook type then picks routine-procedure or incident-response
     mode: create
     sections: all
+  # A recorded call covers several things; the extractor splits it before planning (ADR 0006).
+  # The rule decides what is kept: here, only what changes how incidents are handled or what
+  # people must do. Status chatter and jokes are dropped.
+  - id: incident-review-call
+    description: >-
+      A verbatim transcript of a recorded incident review or retro call: timestamped lines, each
+      with a speaker. Notes someone wrote during or after a meeting are not transcripts.
+    mode: extract
+    extract: >-
+      Keep passages that state or change how an incident is handled (a runbook step, an escalation
+      contact or timing) or a rule people must follow (a policy), one extract per runbook or policy
+      they concern. Drop status chatter, introductions, jokes and scheduling.

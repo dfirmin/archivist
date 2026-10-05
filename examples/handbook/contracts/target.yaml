@@ -26,6 +26,8 @@ reference:
     path: reference/teams.yaml
     description: The teams that own handbook documents, with their lead and on-call channel.
     guidance: |
-      A team key (platform, people-ops) is valid only when it appears under teams. Match the owner a
-      document names to a team by its key or its name. Copy the lead and on_call values exactly;
-      never invent a contact.
+      A team key (platform, people-ops, finance-ops, security, data-engineering) is valid only when
+      it appears under teams. Match the owner a document names, or the team its author clearly
+      speaks for, to a team by its key, its name or one of its aliases. Copy the lead and on_call
+      values exactly; never invent a contact. A document whose owner matches no team is out of
+      scope.

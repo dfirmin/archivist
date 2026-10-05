@@ -2,7 +2,8 @@
 # dispatches it. Engine-owned. A target picks or defines pipelines from these agents in
 # contracts/target.yaml; it never adds an agent.
 #
-# Python reads this file for four things only:
+# Python reads this file for four things only (plus which agents are the planner and the
+# extractor, the support agents an authoring run may spawn besides its stages):
 #   - roster: the conductor's Agent(...) allowlist for the chosen pipeline;
 #   - requires: which contracts the chosen pipeline needs (missing = the run refuses);
 #   - dispatch: copied verbatim into the run plan the conductor follows;
@@ -12,11 +13,17 @@
 version: 1
 coordinator: conductor
 planner: intake-planner
+# Splits documents of an intake class with `mode: extract` into topic extracts before planning
+# (ADR 0006). Support, like the planner: in the roster only when the target's intake extracts.
+extractor: extractor
 default_pipeline: full
 
 agents:
   intake-planner:
     optional: [intake, reference]
+
+  extractor:
+    optional: [intake, concept-types, reference]
 
   author:
     produces: true            # creates concepts from inbox documents; the entry stage of an inbox run

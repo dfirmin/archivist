@@ -1,0 +1,17 @@
+id: ratio-metric
+description: A metric that divides one quantity by another (a rate, ratio or percentage).
+sections:
+  - Definition
+  - heading: Formula
+    subsections:
+      - heading: Numerator
+        description: What is summed or counted on top, with its filters, as the source states it.
+      - heading: Denominator
+        description: What it is divided by, with its filters.
+  - Grain & Time Window
+  - heading: Data Sources
+    description: The views or tables the source names for this metric.
+  - heading: Exclusions
+    required: false
+  - heading: Known Issues
+    required: false

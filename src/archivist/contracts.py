@@ -54,6 +54,7 @@ STRUCTURE_FIELD = "okfx_structure"  # the structure the author chose; later stag
 PLACEMENT_FIELD = "okfx_placement"  # new or update, and the concept matched (ADR 0005)
 QUARANTINE_FIELD = "okfx_quarantine"  # why a draft could not be placed, and what would resolve it
 ENGINE_FIELDS = frozenset({GAPS_FIELD, CONFIDENCE_FIELD, STRUCTURE_FIELD, PLACEMENT_FIELD, QUARANTINE_FIELD})
+EXTRACT_MODE = "extract"  # an intake class whose documents the extractor splits (ADR 0006)
 IDENTITY_TITLE = "title"  # the one OKF field an identity may name besides declared fields
 
 DEFAULT_ORIGINS: Mapping[str, str] = {
@@ -124,6 +125,12 @@ class TargetContracts:
 
     def gap_kinds(self) -> dict[str, Any]:
         return dict(self.documents.get("gap-kinds") or {})
+
+    @property
+    def extracts(self) -> bool:
+        """The intake declares a class whose documents are split into extracts (ADR 0006)."""
+        intake = self.documents.get("intake") or {}
+        return any(c.get("mode") == EXTRACT_MODE for c in intake.get("classes") or ())
 
 
 # ---------------------------------------------------------------------------- schemas
@@ -415,13 +422,22 @@ def _cross_check(c: TargetContracts, enrichment_methods: Iterable[str] | None) -
         else:
             if default:
                 check_type(default, "default")
-            elif not classes:
+            elif not [c for c in classes if c.get("mode") != EXTRACT_MODE]:
                 errors.append(f"{label}: give a default concept_type, or classes that each name one")
             ids: set[str] = set()
             for cls in classes:
                 if cls["id"] in ids:
                     errors.append(f"{label}: class {cls['id']!r} is listed twice")
                 ids.add(cls["id"])
+                if cls.get("mode") == EXTRACT_MODE:  # split before planning; never authored as is
+                    if not cls.get("extract"):
+                        errors.append(f"{label}: class {cls['id']!r} has mode extract but no `extract` rule")
+                    for key in ("concept_type", "sections"):
+                        if key in cls:
+                            errors.append(f"{label}: class {cls['id']!r} has mode extract, so it takes no {key}")
+                    continue
+                if cls.get("extract"):
+                    errors.append(f"{label}: class {cls['id']!r} has an `extract` rule but mode {cls['mode']!r}")
                 type_id = cls.get("concept_type") or default
                 if not type_id:
                     errors.append(f"{label}: class {cls['id']!r} names no concept_type and there is no default")

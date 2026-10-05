@@ -43,16 +43,28 @@ several groups. Your own edits are bookkeeping only: the catalog, and what a sta
 ## 1. Take the queue
 
 - **One inbox document:** the queue is one group holding it; its slug is the file stem.
+- **Only these inbox documents** (the kickoff lists them; on a target that extracts): spawn the
+  plan's `planner`, description `plan-inbox`, prompt `Plan the queue: only these inbox
+  documents:` followed by one `- <path>` line each. It replies as for an inbox scan.
 - **Existing concepts:** the kickoff lists one or more; the queue is one group per concept,
   in the listed order, each the group's only concept. The producing stage is not in the plan.
   Go to §2. `scope.kinds` in the plan, when it is a list, limits every gap fleet to those kinds.
 - **Inbox scan:** spawn the plan's `planner`, description `plan-inbox`, prompt
-  `Plan the queue: all inbox documents.` (or `at most N inbox documents.`). It replies
+  `Plan the queue: all inbox documents.` (or `at most N inbox documents.`). When the kickoff
+  lists **Held** documents, add a line `Leave out:` and one `- <path>` line each to whichever
+  planner prompt you send. It replies
   `Groups: <n>` and each group's ordered documents. With `Scope: one group` the queue is
   the first group only.
 
 Done when the queue is set. `Groups: 0` is a clean exit: say so and stop. Otherwise write one
 `TodoWrite` item per group plus one for `summary`.
+
+**An `extract` group comes first and ends the session.** When the planner's first group is
+`extract`, spawn the plan's `extractor` once per document in it, all in **one message**:
+description `extract-<file stem>`, prompt `Extract sources/inbox/<file>.md.` Record each
+report's extracts and quarantined stub. When publishing, commit and push (**knowledge-repo-git**
+§2–3), then write the summary and stop: the next session plans the extracts with the rest of
+the inbox. No stage and no other group runs in this session.
 
 When the kickoff says to publish, take the branch it names now (**knowledge-repo-git**).
 
@@ -105,6 +117,7 @@ The run is done here, not before. Write it once every todo is closed:
 Pipeline: <name>     Groups: N     Concepts written: N
 Stages: <agent> N, <agent> N, …
 PR: <url or none>     Gap issues: N created, N updated     Quarantine issues: N
+Extracted: <document → n extracts, or none>
 Quarantined: <draft → reason, or none>
 Left in inbox: <document → reason, or none>
 Failures: <concept or document → stage → error, or none>

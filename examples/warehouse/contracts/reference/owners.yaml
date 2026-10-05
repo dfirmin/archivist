@@ -3,6 +3,9 @@ subject_areas:
   - slug: customer-care
     archetype: data
     product_owners: [customer-care@example.com]
+  - slug: claims
+    archetype: data
+    product_owners: [claims-data@example.com, claims-analytics@example.com]
   - slug: case-handling-process
     archetype: process
     product_owners: [process-owners@example.com]

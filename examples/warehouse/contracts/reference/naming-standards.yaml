@@ -5,3 +5,7 @@ abbreviations:
   INCRMTL: incremental
   SV: secure view (object-type suffix)
   CD: code
+  HDR: header
+  PMT: payment
+  CNT: count
+  FREQ: frequency

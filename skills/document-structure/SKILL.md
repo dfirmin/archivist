@@ -84,6 +84,7 @@ authors only routed sections.
 | Input | May supply | Never supplies |
 |---|---|---|
 | A cited source document (this group's inbox documents; in ENRICH also the concept's existing `sources`) | body text, quoted or restated | — |
+| An extract's `About:` line (the extractor's own words, ADR 0006) | nothing: it names the topic; the quoted lines under it are the source | body text |
 | A reference contract (registry, owner list, glossary …) | frontmatter field values per the field's `from` rule; scope decisions | body text, a contact, name, role, channel, expansion or description |
 | Your own knowledge or "context for clarity" | nothing | anything |
 
@@ -111,7 +112,8 @@ CREATE and PARTIAL CREATE write, in this order:
   write (report it).
 
 ENRICH preserves every existing key, appends to `sources`, refreshes `generated` and sets
-`okfx_placement` to this update. When the
+`okfx_placement` to this update, except on a concept this group itself created, which keeps
+`{outcome: new}`. When the
 new source changes something the concept states (an amendment, a correction), update that text
 to the new value everywhere it appears and cite the new source there; say what changed when
 the source does (for example "raised from $60 to $75, effective November 1").
@@ -140,8 +142,9 @@ A document the author cannot place goes to `quarantine/` at the bundle root, nev
   group's first document's file name, and a later document of that group joins the draft. A
   file already at the path is replaced.
 - Frontmatter: as §4, with `status: quarantined` in place of `draft`, no `okfx_placement`,
-  `okfx_structure` only when chosen, and a stub needs just `type` (the class's concept type),
-  `title`, `status`, `generated` and `sources`. Then
+  `okfx_structure` only when chosen, and a stub needs just `type` (the class's concept type;
+  none for a class that names none, such as an extract class), `title`, `status`, `generated`
+  and `sources`. Then
   `okfx_quarantine: {reason: <one sentence>, needs: <what would resolve it>, candidates: [<paths>]}`
   (`candidates` only for ambiguous placement). `needs` is written for the owner who will act on
   it and names the change that would place the document: the reference-data entry, owner or
