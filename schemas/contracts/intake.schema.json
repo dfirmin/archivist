@@ -19,7 +19,7 @@
     },
     "scope": {
       "type": "string",
-      "description": "When a document is in scope. Out of scope stays in the inbox."
+      "description": "When a document is in scope. An out-of-scope document is quarantined, not authored."
     },
     "grouping": {
       "type": "string",

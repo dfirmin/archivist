@@ -37,7 +37,8 @@ disclosure.
 | [`index.md`](index.md) | Bundle map — find concepts by group |
 | [`log.md`](log.md) | Chronological change history (newest first) |
 | `knowledge/` | Authored concepts (OKF IDs are paths under here) |
-| `sources/` | Source documents: `processed/` holds what concepts cite, `inbox/` what is waiting |
+| `sources/` | Source documents: `processed/` holds what concepts cite, `inbox/` what is waiting, `quarantine/` what is held |
+| `quarantine/` | Unapproved drafts archivist could not place — never answer from them |
 | `contracts/` | The engine's specification for this bundle — not knowledge to answer from |
 
 ## Done when

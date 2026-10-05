@@ -50,7 +50,8 @@ def test_scaffold_seeds_the_publishing_files_once(tmp_path: Path) -> None:
     workspace = tmp_path / "kb"
     result = scaffold_workspace(workspace, TARGET, engine="v0.1.0")
     seeded = {f".github/workflows/{name}.yml" for name in WORKFLOWS} | {
-        f"{ARCHIVIST_DIR}/publish.py", f"{ARCHIVIST_DIR}/secrets.yaml", f"{ARCHIVIST_DIR}/SECRETS.md"}
+        f"{ARCHIVIST_DIR}/publish.py", f"{ARCHIVIST_DIR}/secrets.yaml", f"{ARCHIVIST_DIR}/SECRETS.md",
+        "quarantine/README.md"}
     assert seeded <= set(result.written)
 
     edited = workspace / ".github/workflows/publish-databricks.yml"

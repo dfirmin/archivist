@@ -265,3 +265,36 @@ def test_okfx_structure_is_engine_owned(minimal: Path) -> None:
         lambda d: d["concept_types"]["policy-summary"]["fields"].update({"okfx_structure": {"description": "x"}}),
     )
     assert "okfx_structure: engine-owned field" in contracts_error(minimal)
+
+
+def test_identity_names_declared_fields_or_title(minimal: Path) -> None:
+    edit_yaml(
+        minimal / "contracts/concept-types.yaml",
+        lambda d: d["concept_types"]["policy-summary"].update(
+            {"identity": {"fields": ["title", "okfx_policy_owner", "okfx_missing"], "match": "any"}}
+        ),
+    )
+    message = contracts_error(minimal)
+    assert "identity: field 'okfx_missing' is not a declared field" in message
+    assert "'okfx_policy_owner'" not in message and "field 'title'" not in message
+
+
+def test_identity_needs_fields_and_a_known_match(minimal: Path) -> None:
+    edit_yaml(
+        minimal / "contracts/concept-types.yaml",
+        lambda d: d["concept_types"]["policy-summary"].update({"identity": {"fields": [], "match": "some"}}),
+    )
+    message = contracts_error(minimal)
+    assert "identity" in message and "match" in message
+
+
+def test_placement_and_quarantine_fields_are_engine_owned(minimal: Path) -> None:
+    edit_yaml(
+        minimal / "contracts/concept-types.yaml",
+        lambda d: d["concept_types"]["policy-summary"]["fields"].update(
+            {"okfx_placement": {"description": "x"}, "okfx_quarantine": {"description": "x"}}
+        ),
+    )
+    message = contracts_error(minimal)
+    assert "okfx_placement: engine-owned field" in message
+    assert "okfx_quarantine: engine-owned field" in message

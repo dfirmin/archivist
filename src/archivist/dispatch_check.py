@@ -40,10 +40,10 @@ def planned_groups(monitor: StreamMonitor, planner: str) -> int | None:
 
 
 def planner_gave_up(monitor: StreamMonitor, planner: str) -> bool:
-    """A bare ``Groups: 0`` with no ``Skipped:`` list is malformed, not an empty queue."""
-    if planned_groups(monitor, planner) != 0:
-        return False
-    return "Skipped:" not in (_planner_reply(monitor, planner) or "")
+    """``Groups: 0`` over a non-empty inbox is malformed: the planner puts every document in a
+    group, out-of-scope ones in a group of their own for the author to quarantine (ADR 0005).
+    The caller asks only when the inbox held documents at launch."""
+    return planned_groups(monitor, planner) == 0
 
 
 def check_entry_stage_ran(

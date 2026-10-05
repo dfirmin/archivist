@@ -259,6 +259,8 @@ my-knowledge/
 ├── knowledge/               # authored concepts (concept ID = path)
 ├── sources/inbox/           # documents waiting to be authored
 ├── sources/processed/       # authored documents, kept for citation
+├── sources/quarantine/      # documents behind a quarantined draft
+├── quarantine/              # drafts the author could not place, until an owner resolves them
 ├── index.md  log.md         # OKF reserved files
 ```
 

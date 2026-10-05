@@ -1,6 +1,6 @@
 version: 1
 # No default concept_type: every class says which concept type its documents become.
-scope: A document is in scope when the team it names as owner is listed in teams; otherwise it stays in the inbox.
+scope: A document is in scope when the team it names as owner is listed in teams; otherwise it is out of scope until that team is added.
 grouping: Each document is its own concept, except a policy amendment, which joins the policy it amends.
 naming: The document's title without dates or version numbers, in title case.
 classes:

@@ -19,21 +19,24 @@ document is in scope and is its own group, in file-name order.
 
 1. LIST the inbox: `ls -1 sources/inbox/*.md | sort`; keep the first N when
    the scope is limited.
-   Done when the in-scope list is recorded. Reply `Groups: 0` only after a second
+   Done when the list is recorded. Reply `Groups: 0` only after a second
    `ls -la sources/inbox` also shows no `.md` file.
 
 2. SCOPE each document per the intake `scope`, reading the reference data it names.
-   Done when every document is in scope or skipped with a short reason.
+   Done when every document is in scope or out of scope with a short reason.
 
-3. GROUP the in-scope documents per the intake `grouping`, and order each group per
-   `ordering`. Give each group a short lowercase-hyphen slug.
-   Done when every in-scope document is in exactly one group.
+3. GROUP the documents. Out-of-scope documents together form the first group, slug
+   `out-of-scope`, so the author quarantines them before any authoring. The in-scope documents
+   follow, grouped per the intake `grouping` and each group ordered per `ordering`. Give each
+   group a short lowercase-hyphen slug.
+   Done when every listed document is in exactly one group.
 
 4. REPLY with this shape and nothing after it. `<n>` is the number of `Group` lines; count
-   them before you write it. Reply `Groups: 0` only when every document is under `Skipped:`.
+   them before you write it. Every listed document appears under a group, so `<n>` is 0 only
+   for an empty inbox.
 
        Groups: <n>
-       Group 1: <group-slug> — <one-line label>
+       Group 1: out-of-scope — <reasons, briefly>
        - sources/inbox/<filename>.md
-       Skipped:
-       - sources/inbox/<filename>.md — <reason>
+       Group 2: <group-slug> — <one-line label>
+       - sources/inbox/<filename>.md

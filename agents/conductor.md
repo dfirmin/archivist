@@ -61,8 +61,9 @@ When the kickoff says to publish, take the branch it names now (**knowledge-repo
 Go down the plan's `stages` in order.
 
 - **`per: group`** (the producing stage): one spawn for the whole group. Its report lists
-  the concept paths it wrote and the documents it left in the inbox. Record the concepts;
-  every later stage runs once per concept.
+  the concept paths it wrote, the drafts it quarantined and the documents it left in the
+  inbox. Record all three; every later stage runs once per concept, and never on a
+  quarantined draft.
 - **`per: concept`**: one spawn per concept, in the order the producing stage reported.
 - **`per: gap-kind`**: do the `before` rule, then spawn the whole fleet for the concept in
   **one message** so it runs in parallel.
@@ -75,12 +76,13 @@ Apply each stage's `done_when` to its result. Then, when it does not hold:
 - `on_failure: fail-group` — record it; the group ends here and you go to the next group;
 - any other `on_failure` text — follow it as written.
 
-A document the producing stage left in the inbox is not a failure; record it with its reason.
+A quarantined draft, or a document the producing stage left in the inbox, is not a failure;
+record it with its reason.
 
 ## 3. Catalog the group
 
-**update-catalog** for the concepts this group created or changed. Done when each has its
-`log.md` line and `index.md` is rebuilt.
+**update-catalog** for the concepts this group created or changed and the drafts it
+quarantined. Done when each has its `log.md` line and `index.md` is rebuilt.
 
 ## 4. Publish the group
 
@@ -88,8 +90,8 @@ Only when the kickoff says to publish, in order:
 
 1. **knowledge-repo-git**: commit this group and push the branch.
 2. **open-pull-request**: open the PR after the first push, reuse it afterwards.
-3. **file-gap-issues**: one issue per `okfx_gaps` entry on this group's concepts, and the open
-   issues of kinds this run judged absent closed.
+3. **file-gap-issues**: one issue per `okfx_gaps` entry on this group's concepts and one per
+   quarantined draft, and the open issues this group resolved closed.
 
 An empty diff has nothing to publish: skip all three. Mark the group's todo `completed`,
 then start the next group at §2.
@@ -102,7 +104,8 @@ The run is done here, not before. Write it once every todo is closed:
 == Archivist run complete ==
 Pipeline: <name>     Groups: N     Concepts written: N
 Stages: <agent> N, <agent> N, …
-PR: <url or none>     Gap issues: N created, N updated
+PR: <url or none>     Gap issues: N created, N updated     Quarantine issues: N
+Quarantined: <draft → reason, or none>
 Left in inbox: <document → reason, or none>
 Failures: <concept or document → stage → error, or none>
 ```

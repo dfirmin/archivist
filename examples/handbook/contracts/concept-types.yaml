@@ -12,6 +12,12 @@ concept_types:
         description: The owning team's key.
         required: true
         from: teams — the team the document names as owner
+    identity:
+      fields: [title]
+      guidance: >-
+        One policy per subject. Titles match ignoring case, dates, version numbers and words like
+        "policy", "update" or "2026" (the Remote Work Policy and "Remote work policy – 2026
+        update" are one policy).
 
   runbook:
     type: Runbook
@@ -34,3 +40,7 @@ concept_types:
       okfx_on_call:
         description: Where to escalate.
         from: teams — the owning team's on_call value
+    identity:
+      fields: [title, okfx_team]
+      match: all
+      guidance: The same task for the same team; titles match ignoring case and dates.

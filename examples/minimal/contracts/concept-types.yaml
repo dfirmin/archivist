@@ -11,3 +11,5 @@ concept_types:
       okfx_policy_owner:
         description: The team that owns the policy, as the document states it.
         from: the document body
+    identity:
+      fields: [title]

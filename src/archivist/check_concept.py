@@ -5,6 +5,11 @@ source's email subject (``FW: RE: meal limit - FINAL``) went into ``sources`` un
 colons made the whole frontmatter invalid YAML, which broke every later stage. Whether YAML
 parses, whether ``type`` names a real concept type and whether the fields match the contract are
 structural facts, not judgement, so a command answers them and the agent fixes what it reports.
+
+It also holds the line ADR 0005 draws around quarantine: a quarantined draft lives under
+``quarantine/`` with ``status: quarantined`` and says why, and nothing quarantined is accepted
+under ``knowledge/``. A draft reaches ``knowledge/`` only by ``archivist requeue`` and a new
+authoring run, so the stages after the author are never skipped by moving a file.
 """
 
 from __future__ import annotations
@@ -20,6 +25,8 @@ from archivist.contracts import (
     EXTENSION_PREFIX,
     INDEX_REL,
     OKF_FIELDS,
+    PLACEMENT_FIELD,
+    QUARANTINE_FIELD,
     STRUCTURE_FIELD,
     TargetContracts,
     load_contracts,
@@ -27,6 +34,9 @@ from archivist.contracts import (
 from archivist.errors import ContractError
 
 _DELIM = "---"
+QUARANTINE_DIR = "quarantine"
+QUARANTINED = "quarantined"
+PLACEMENT_OUTCOMES = ("new", "update")
 
 
 @dataclass(slots=True)
@@ -93,18 +103,21 @@ def check_concept(path: Path) -> ConceptReport:
         return report
     spec = contracts.concept_types()[type_id]
     declared = spec.get("fields") or {}
+    quarantined = _check_location(path, contracts.workspace, data, report)
 
     structure = data.get(STRUCTURE_FIELD)
     allowed = list(spec.get("structures") or ())
     if spec.get("authored") and allowed:
-        if structure is None:
+        if structure is None and not quarantined:
             report.problems.append(f"`{STRUCTURE_FIELD}` is missing; record the structure chosen ({', '.join(allowed)})")
-        elif structure not in allowed:
+        elif structure is not None and structure not in allowed:
             report.problems.append(f"`{STRUCTURE_FIELD}: {structure}` is not one of {type_id}'s structures ({', '.join(allowed)})")
 
-    for name, field_spec in declared.items():
-        if field_spec.get("required") and data.get(name) in (None, "", []):
-            report.problems.append(f"required field `{name}` is missing or empty")
+    if not quarantined:  # a quarantined draft may lack exactly the value that quarantined it
+        for name, field_spec in declared.items():
+            if field_spec.get("required") and data.get(name) in (None, "", []):
+                report.problems.append(f"required field `{name}` is missing or empty")
+    _check_placement(data.get(PLACEMENT_FIELD), report)
     for name in data:
         if name in OKF_FIELDS or name in ENGINE_FIELDS or name in declared:
             continue
@@ -124,3 +137,47 @@ def check_concept(path: Path) -> ConceptReport:
                 elif not (contracts.workspace / str(entry["resource"])).is_file():
                     report.problems.append(f"`sources[{i}].resource` does not exist: {entry['resource']}")
     return report
+
+
+def _check_location(path: Path, workspace: Path, data: dict[str, Any], report: ConceptReport) -> bool:
+    """Whether the file is a quarantined draft; records a problem when status and place disagree."""
+    try:
+        top = path.relative_to(workspace.resolve()).parts[0]
+    except (ValueError, IndexError):
+        top = ""
+    quarantined = data.get("status") == QUARANTINED
+    if quarantined and top != QUARANTINE_DIR:
+        report.problems.append(
+            f"`status: {QUARANTINED}` belongs under {QUARANTINE_DIR}/ only. A quarantined draft "
+            f"reaches {top or 'this place'}/ by `archivist requeue {QUARANTINE_DIR}/<file>.md` "
+            "and a new authoring run, never by moving it"
+        )
+    if top == QUARANTINE_DIR and not quarantined:
+        report.problems.append(f"a file under {QUARANTINE_DIR}/ needs `status: {QUARANTINED}`")
+    note = data.get(QUARANTINE_FIELD)
+    if quarantined:
+        if not isinstance(note, dict):
+            report.problems.append(f"`{QUARANTINE_FIELD}` is missing; give `reason` and `needs`")
+        else:
+            for key in ("reason", "needs"):
+                if not str(note.get(key) or "").strip():
+                    report.problems.append(f"`{QUARANTINE_FIELD}.{key}` is missing or empty")
+            candidates = note.get("candidates")
+            if candidates is not None and not isinstance(candidates, list):
+                report.problems.append(f"`{QUARANTINE_FIELD}.candidates` must be a list of concept paths")
+    elif note is not None:
+        report.problems.append(f"`{QUARANTINE_FIELD}` belongs only on a quarantined draft")
+    return quarantined
+
+
+def _check_placement(placement: Any, report: ConceptReport) -> None:
+    if placement is None:
+        return
+    if not isinstance(placement, dict):
+        report.problems.append(f"`{PLACEMENT_FIELD}` must be a mapping with `outcome` (and `matched` on update)")
+        return
+    outcome = placement.get("outcome")
+    if outcome not in PLACEMENT_OUTCOMES:
+        report.problems.append(f"`{PLACEMENT_FIELD}.outcome: {outcome}` is not one of {', '.join(PLACEMENT_OUTCOMES)}")
+    elif outcome == "update" and not str(placement.get("matched") or "").strip():
+        report.problems.append(f"`{PLACEMENT_FIELD}.matched` names the identity value an update matched")

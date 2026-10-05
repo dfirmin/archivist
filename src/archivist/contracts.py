@@ -51,7 +51,10 @@ EXTENSION_PREFIX = "okfx_"
 GAPS_FIELD = "okfx_gaps"
 CONFIDENCE_FIELD = "okfx_confidence"
 STRUCTURE_FIELD = "okfx_structure"  # the structure the author chose; later stages read it
-ENGINE_FIELDS = frozenset({GAPS_FIELD, CONFIDENCE_FIELD, STRUCTURE_FIELD})
+PLACEMENT_FIELD = "okfx_placement"  # new or update, and the concept matched (ADR 0005)
+QUARANTINE_FIELD = "okfx_quarantine"  # why a draft could not be placed, and what would resolve it
+ENGINE_FIELDS = frozenset({GAPS_FIELD, CONFIDENCE_FIELD, STRUCTURE_FIELD, PLACEMENT_FIELD, QUARANTINE_FIELD})
+IDENTITY_TITLE = "title"  # the one OKF field an identity may name besides declared fields
 
 DEFAULT_ORIGINS: Mapping[str, str] = {
     "author": "A cited source or a reference contract holds the information, but the concept "
@@ -375,6 +378,12 @@ def _cross_check(c: TargetContracts, enrichment_methods: Iterable[str] | None) -
                 errors.append(f"{where}: several structures need a structure_rule")
             if spec.get("authored") and not (spec.get("path") and spec.get("structures")):
                 errors.append(f"{where}: an authored type needs a path and structures")
+            for name in (spec.get("identity") or {}).get("fields") or ():
+                if name != IDENTITY_TITLE and name not in (spec.get("fields") or {}):
+                    errors.append(
+                        f"{where}.identity: field {name!r} is not a declared field of the type "
+                        f"(or {IDENTITY_TITLE!r})"
+                    )
             for i, comp in enumerate(spec.get("companions") or ()):
                 if comp["concept_type"] not in types:
                     errors.append(f"{where}.companions[{i}]: concept type {comp['concept_type']!r} not found")

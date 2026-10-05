@@ -29,14 +29,16 @@ agents:
         Author these inbox documents, in this order:
         {documents}
       done_when: >-
-        A concept exists for the group and each in-scope document has left the inbox for
-        sources/processed/. Record each concept path the author reports.
+        Each document has left the inbox, for sources/processed/ behind a concept or for
+        sources/quarantine/ behind a quarantined draft; only a document awaiting its primary
+        document may stay. Record each concept path and each quarantined draft the author
+        reports. Quarantined drafts go to no later stage.
       on_empty: >-
-        The author returned without writing a concept while the documents are still in the
-        inbox: retry once with description "author-{group}-retry" and this line in front of the
-        same prompt: "The previous session stopped before writing. Write the concept now and
-        move each in-scope document to sources/processed/." A second empty return
-        fails the group.
+        The author returned without writing a concept or a quarantined draft while the
+        documents are still in the inbox: retry once with description "author-{group}-retry"
+        and this line in front of the same prompt: "The previous session stopped before
+        writing. Write the concept, or quarantine what you cannot place, now and move each
+        document out of the inbox." A second empty return fails the group.
       on_failure: fail-group
 
   enricher:

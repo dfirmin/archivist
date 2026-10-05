@@ -13,7 +13,7 @@ once, before an agent runs.
 | File | Decides | Needed when |
 |---|---|---|
 | `target.yaml` | the target's slug, its pinned engine release, its pipelines, where everything else lives | always |
-| `concept-types.yaml` | each kind of document: OKF `type`, file path, allowed structures, tags, `okfx_` fields | the author, enricher or gap-agent runs |
+| `concept-types.yaml` | each kind of document: OKF `type`, file path, allowed structures, tags, `okfx_` fields, and the `identity` that says when two documents are the same one | the author, enricher or gap-agent runs |
 | `structures/*.yaml` | the sections of a document, in order, and who writes each one | the author or enricher runs |
 | `intake.yaml` | which inbox documents are in scope, how they group, what class each is, and which concept type each class becomes | optional (defaults: everything in scope, one document per concept) |
 | `gap-kinds.yaml` | what counts as a gap, per concept type | the gap-agent or scorer runs |
@@ -130,8 +130,50 @@ fields:
     from: teams — the team the document names as owner
 ```
 
-The engine owns three `okfx_` fields: `okfx_structure` (author), `okfx_gaps` (gap-agents) and
+The engine owns five `okfx_` fields: `okfx_structure` and `okfx_placement` (author),
+`okfx_quarantine` (author, on quarantined drafts only), `okfx_gaps` (gap-agents) and
 `okfx_confidence` (scorer). Targets cannot declare them.
+
+## Identity: update or new
+
+Before writing, the author asks whether a concept for this document already exists. The
+concept type's `identity` answers it: the fields whose values say two documents describe the
+same instance.
+
+```yaml
+# examples/warehouse/contracts/concept-types.yaml
+business-view-group-overview:
+  identity:
+    fields: [okfx_physical_views]   # any view already documented → update that group
+    match: any
+    guidance: Compare view names case-insensitively; a view and its _INCRMTL_ sibling are the same group.
+```
+
+The author resolves the document's identity values, finds every existing concept of the type
+that shares them and then:
+
+- exactly one match → **update** it in place (its path and title stay; sources are appended);
+- no match → **new** concept;
+- several matches, or one your `grouping` says is a different concept → **quarantine**.
+
+It records the decision as `okfx_placement`. A type without `identity` is identified by
+`title`, which is fragile when titles come from messy documents, so declare an identity from
+fields the reference data or the document fixes (an entity name, a product code, a team plus a
+task). See `examples/handbook` for `title` with matching guidance and `[title, okfx_team]`.
+
+## Quarantine
+
+What the author cannot place goes to `quarantine/` at the repository root, not `knowledge/`:
+documents out of your intake `scope` (as a frontmatter-only stub), documents whose required
+field has no value (as a best-effort draft), and ambiguous placements (as a draft naming the
+candidates). Each carries `status: quarantined` and `okfx_quarantine: {reason, needs,
+candidates}`; its documents wait in `sources/quarantine/`; the run opens a `Quarantined: …`
+issue. Nothing there is indexed, judged, scored or published.
+
+To resolve one, make the change `needs` names (usually in your reference data or `scope`
+prose), then `archivist requeue quarantine/<file>.md` and run again. Write your `scope` as a
+rule ("out of scope until an owner assigns it"), not as a disposition ("stays in the inbox"):
+where out-of-scope documents go is the engine's job. ADR 0005 has the reasoning.
 
 ## Reference data and gap origin
 
