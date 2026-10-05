@@ -64,3 +64,57 @@ def test_undeclared_fields_and_missing_sources_are_caught(concept: Path) -> None
     assert "`owner` is neither an OKF field nor an okfx_ field" in found
     found = problems(concept, "sources/processed/deploy.md", "sources/processed/missing.md")
     assert found == ["`sources[0].resource` does not exist: sources/processed/missing.md"]
+
+
+QUARANTINED = """---
+type: Runbook
+title: Rotating the Pager
+status: quarantined
+sources:
+  - resource: sources/quarantine/pager.md
+    title: pager notes
+okfx_quarantine:
+  reason: The document names no owning team listed in teams.
+  needs: A teams entry for the owner the document names.
+---
+"""
+
+
+@pytest.fixture
+def draft(handbook: Path) -> Path:
+    (handbook / "sources/quarantine").mkdir(parents=True)
+    (handbook / "sources/quarantine/pager.md").write_text("source\n", encoding="utf-8")
+    path = handbook / "quarantine/pager.md"
+    path.parent.mkdir(parents=True)
+    path.write_text(QUARANTINED, encoding="utf-8")
+    return path
+
+
+def test_a_quarantined_draft_may_lack_required_fields_and_structure(draft: Path) -> None:
+    assert check_concept(draft).problems == []
+
+
+def test_a_quarantined_draft_says_why_and_what_resolves_it(draft: Path) -> None:
+    draft.write_text(QUARANTINED.replace("  needs: A teams entry for the owner the document names.\n", ""), encoding="utf-8")
+    assert check_concept(draft).problems == ["`okfx_quarantine.needs` is missing or empty"]
+    draft.write_text(QUARANTINED.replace("status: quarantined", "status: draft"), encoding="utf-8")
+    found = check_concept(draft).problems
+    assert "a file under quarantine/ needs `status: quarantined`" in found
+    assert "`okfx_quarantine` belongs only on a quarantined draft" in found
+
+
+def test_a_quarantined_draft_moved_into_knowledge_is_refused(handbook: Path, draft: Path) -> None:
+    moved = handbook / "knowledge/runbooks/Rotating the Pager.md"
+    moved.parent.mkdir(parents=True)
+    draft.rename(moved)
+    found = check_concept(moved).problems
+    assert any("`status: quarantined` belongs under quarantine/ only" in p and "archivist requeue" in p for p in found)
+
+
+def test_placement_records_an_outcome_and_the_match(concept: Path) -> None:
+    ok = "okfx_team: platform\nokfx_placement: {outcome: update, matched: 'title: Deploying the Web App'}"
+    assert problems(concept, "okfx_team: platform", ok) == []
+    found = problems(concept, "okfx_team: platform", "okfx_team: platform\nokfx_placement: {outcome: update}")
+    assert found == ["`okfx_placement.matched` names the identity value an update matched"]
+    found = problems(concept, "okfx_team: platform", "okfx_team: platform\nokfx_placement: {outcome: merge}")
+    assert found == ["`okfx_placement.outcome: merge` is not one of new, update"]

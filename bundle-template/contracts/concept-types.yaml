@@ -18,3 +18,8 @@ concept_types:
       okfx_owner:
         description: The team or person the source names as owner, if any.
         from: the source document body; leave unset when it names none
+    # What makes two documents the same article. Before writing, the author looks for an
+    # existing article with the same identity and updates it instead of creating another.
+    identity:
+      fields: [title]
+      guidance: Titles match ignoring case, dates and version numbers.

@@ -22,8 +22,10 @@ engine runs many targets without engine changes.
    reliable, and record the failure and the decision in `docs/adr/`. Today there are
    these: contract validation, engine pinning, the entry-stage dispatch check, `record-gap`
    and `prune-gaps` (YAML serialization under a lock), `check-concept` (frontmatter checked
-   after an agent writes it), scope resolution for runs on existing concepts and the write
-   fence on runs whose stages only set frontmatter (ADR 0004).
+   after an agent writes it, including that nothing quarantined sits in `knowledge/`), scope
+   resolution for runs on existing concepts and the write fence on runs whose stages only set
+   frontmatter (ADR 0004), and `requeue` (a quarantined draft's documents back to the inbox,
+   ADR 0005).
 3. **Contracts are flexible by default.** Only `contracts/target.yaml` is required. Every other
    contract is required only when an agent in the chosen pipeline lists it under `requires` in
    `agents/profile.yaml`. Never make a contract mandatory for every target.
@@ -138,7 +140,7 @@ read, and what you checked:
 
 | Role | Must prove |
 |---|---|
-| author | the path, type, tags and okfx_ fields follow the target's contracts; sections follow the structure and their owners; the document moved to `sources/processed/` and is in `sources`; `okfx_gaps`, `okfx_confidence`, `verified` untouched |
+| author | the path, type, tags and okfx_ fields follow the target's contracts; `okfx_placement` matches what was there (an update lands on the existing concept); sections follow the structure and their owners; the document moved to `sources/processed/` and is in `sources`, or what could not be placed is a quarantined draft with its document in `sources/quarantine/`; `okfx_gaps`, `okfx_confidence`, `verified` untouched |
 | enricher | only `owner: enricher` sections changed; rows cite a file at a commit; clones removed |
 | verifier | lost source content restored, cited, under existing headings; one `verified` entry appended; nothing else in frontmatter |
 | gap-agent | one kind; the write went through `record-gap`; body unchanged; a `--kind` run touched only that kind's entry |

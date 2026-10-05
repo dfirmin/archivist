@@ -30,8 +30,8 @@ reference:
     description: Physical views and tables mapped to a subject area and the repo whose code builds them.
     guidance: |
       Look an entity up by exact name, case-insensitive: `grep -i "^<ENTITY>," contracts/reference/inventory.csv`.
-      - No row: the entity is out of scope.
-      - subject_area is UNKNOWN: out of scope until an owner assigns it; say "unresolved subject area".
+      - No row: the entity is out of scope; say "no inventory row for <ENTITY>".
+      - subject_area is UNKNOWN: out of scope until an owner assigns it; say "unresolved subject area for <ENTITY>".
       - Otherwise subject_area is an owners slug and source_repo (possibly empty) is the code repo.
   owners:
     path: reference/owners.yaml

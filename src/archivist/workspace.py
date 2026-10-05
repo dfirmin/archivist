@@ -91,6 +91,11 @@ _PUBLISHING_FILES = (
 )
 
 
+# Engine-owned layout notes: seeded when missing, on scaffold and on upgrade, never overwritten.
+# The quarantine README tells owners what the directory holds and how to resolve it (ADR 0005).
+_LAYOUT_FILES = ("quarantine/README.md",)
+
+
 class ScaffoldState(str, Enum):
     EMPTY = "empty"
     SCAFFOLDED = "scaffolded"
@@ -260,7 +265,7 @@ def scaffold_workspace(
         if relative == _INDEX:
             continue
         write(relative, render(relative))
-    for relative in _PUBLISHING_FILES:
+    for relative in (*_PUBLISHING_FILES, *_LAYOUT_FILES):
         write(relative, render(relative))
     if seed_starters:
         for relative in _STARTER_FILES:
@@ -669,7 +674,8 @@ def upgrade_target(
     runner: CommandRunner | None = None,
     environ: dict[str, str] | None = None,
 ) -> UpgradeResult:
-    """Move an existing target to another engine: the pin and the examples, nothing else.
+    """Move an existing target to another engine: the pin, the examples and any missing
+    engine layout note (``_LAYOUT_FILES``), nothing else.
 
     Contracts, sources, knowledge, index and log are never touched. The target is validated by
     the engine it moves to before anything is committed; a failure leaves the target as it was
@@ -705,6 +711,12 @@ def upgrade_target(
               .replace("{{name}}", target.name).replace("{{engine}}", pin)
               if readme_template.is_file() else None)
     _refresh_examples(workspace, source, readme, written, skipped)
+    for relative in _LAYOUT_FILES:
+        template, destination = source / "bundle-template" / relative, workspace / relative
+        if template.is_file() and not destination.exists():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+            written.append(relative)
 
     validation = _validate_with(command, flags, workspace, environ)
     if validation.returncode != 0:

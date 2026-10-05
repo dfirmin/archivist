@@ -40,13 +40,18 @@ def test_entry_stage_must_dispatch(warehouse: Path) -> None:
 
 def test_empty_queue_is_a_clean_exit(warehouse: Path) -> None:
     roster = resolve_run(warehouse, engine=ENGINE).roster
-    empty = monitor_with([("intake-planner", "Groups: 0\nSkipped:\n- a.md — no row")])
-    assert check_entry_stage_ran(empty, ENGINE.profile, roster, inbox_documents=1) is None
-    assert not planner_gave_up(empty, "intake-planner")
+    empty = monitor_with([("intake-planner", "Groups: 0")])
+    assert check_entry_stage_ran(empty, ENGINE.profile, roster, inbox_documents=0) is None
 
 
-def test_bare_zero_groups_is_malformed_and_listed_groups_win() -> None:
+def test_zero_groups_over_documents_is_malformed_and_listed_groups_win() -> None:
+    # Out-of-scope documents form a group of their own (ADR 0005), so a non-empty inbox
+    # always plans at least one group; the runner asks only when the inbox held documents.
     assert planner_gave_up(monitor_with([("intake-planner", "Groups: 0")]), "intake-planner")
+    skipped = monitor_with([("intake-planner", "Groups: 0\nSkipped:\n- a.md — no row")])
+    assert planner_gave_up(skipped, "intake-planner")
+    planned = monitor_with([("intake-planner", "Groups: 1\nGroup 1: out-of-scope — quarantine\n- a.md")])
+    assert not planner_gave_up(planned, "intake-planner")
     miscounted = monitor_with([("intake-planner", "Groups: 0\nGroup 1: a\nGroup 2: b")])
     assert planned_groups(miscounted, "intake-planner") == 2
 
@@ -186,6 +191,7 @@ def test_a_pin_moves_only_through_upgrade(tmp_path: Path, monkeypatch: pytest.Mo
                         " target_repo: 'https://github.com/example-org/acme', type: docs, status: active}\n",
                         encoding="utf-8")
     (workspace / "knowledge/kept.md").write_text("untouched\n", encoding="utf-8")
+    (workspace / "quarantine/README.md").unlink()  # a target scaffolded before quarantine existed
     monkeypatch.setattr("archivist.workspace.running_version", lambda: "v1.2.3")  # upgrade to this engine
     result = upgrade_target(target_slug="acme", workspace=workspace, pin="v1.2.3",
                             registry_path=registry, local=True)
@@ -193,5 +199,6 @@ def test_a_pin_moves_only_through_upgrade(tmp_path: Path, monkeypatch: pytest.Mo
     assert "PASS  contracts valid" in result.validation
     assert "engine: v1.2.3" in (workspace / "contracts/target.yaml").read_text(encoding="utf-8")
     assert (workspace / "knowledge/kept.md").read_text(encoding="utf-8") == "untouched\n"
+    assert "quarantine/README.md" in result.written  # the missing layout note is seeded
     with pytest.raises(EngineVersionError, match="development build"):
         upgrade_target(target_slug="acme", workspace=workspace, pin="v1.2.4.dev1", registry_path=registry, local=True)

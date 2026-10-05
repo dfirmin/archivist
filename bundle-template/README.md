@@ -44,10 +44,12 @@ need source detail.
 ├── README.md         # This file
 ├── knowledge/        # Authored OKF concepts (paths are concept IDs; layout set by contracts)
 ├── contracts/        # This target's specification for archivist (human PRs only)
+├── quarantine/       # Drafts archivist could not place, waiting for an owner; see quarantine/README.md
 ├── .github/          # Publishing workflows (Databricks, Confluence, SharePoint); see .github/archivist/SECRETS.md
-└── sources/          # Source documents: inbox/ (waiting) and processed/ (cited)
+└── sources/          # Source documents: inbox/ (waiting), processed/ (cited), quarantine/ (held)
     ├── inbox/        # Incoming inputs awaiting processing
-    └── processed/    # Consumed inputs retained for citation
+    ├── processed/    # Consumed inputs retained for citation
+    └── quarantine/   # Inputs behind a quarantined draft
 ```
 
 ## Concept documents

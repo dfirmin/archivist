@@ -1,12 +1,16 @@
 ---
 name: file-gap-issues
 description: >
-  Files one GitHub issue per `okfx_gaps` entry on a group's concepts, created or updated by exact
-  title, titled and labelled as the target's publishing contract says, linked to the run's
-  pull request, and closes the open issue of each applicable kind the concept no longer has.
-  Use after the PR exists.
+  Files one GitHub issue per `okfx_gaps` entry on a group's concepts and one per quarantined
+  draft, created or updated by exact title, titled and labelled as the target's publishing
+  contract says, linked to the run's pull request; closes the open issue of each applicable
+  kind a concept no longer has and of each quarantined document now authored. Use after the
+  PR exists.
 allowed-tools: Bash, Read
 ---
+
+Contents: 1 Collect the gaps · 2 Render one issue · 3 Create or update · 4 Close resolved gaps ·
+5 Quarantined drafts
 
 Run from the knowledge-repo root, with the PR number and URL from **open-pull-request** and
 the repo slug it used. Keep `https_proxy` if it is set. Credentials stay out of output.
@@ -95,3 +99,37 @@ gh api -X PATCH "repos/$REPO/issues/<n>" -f state=closed -f state_reason=complet
 
 Never close an issue for a kind outside this run's scope. Done when each resolved kind's open
 issue is reported closed, or reported as having none.
+
+## 5. Quarantined drafts
+
+Each draft this group wrote under `quarantine/` gets one issue, titled
+`Quarantined: <draft file name>` and labelled `quarantine`, created or updated by exact title
+as in §3, with this body:
+
+```markdown
+## Quarantined
+<draft path>
+Title: <title>
+Documents: <each sources resource>
+
+## Why
+<okfx_quarantine.reason>
+
+## Needs
+<okfx_quarantine.needs>
+<"Candidates: " and each candidate path, when listed>
+
+## Resolve
+Make the change above by pull request, then run `archivist requeue <draft path>`; the next
+run authors the documents and closes this issue.
+
+## Pull Request
+PR #<number> — <url>
+```
+
+Then close what this group resolved: for each document this group moved into
+`sources/processed/`, an open issue titled `Quarantined: <that file name>` is closed with the
+comment `Authored as <concept path> in PR #<number>.`, as in §4.
+
+Done when each draft has an issue reported created or updated, and each resolved one is
+reported closed or as having none.

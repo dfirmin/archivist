@@ -45,6 +45,23 @@ _Avoid_: archetype, template
 The contract that scopes, groups, orders, names and classifies inbox documents and routes
 each class to sections.
 
+**Identity**:
+`identity` on a concept type: the fields (or `title`) whose values say two documents describe
+the same instance. The author's placement lookup compares them with every existing concept of
+the type before writing. See ADR 0005.
+
+**Placement**:
+The author's decision for a document: **update** the one existing concept with the same
+identity, write a **new** one, or **quarantine** it. Recorded on the concept as
+`okfx_placement`.
+
+**Quarantine**:
+`quarantine/` at the bundle root: drafts the author could not place (out of scope, a required
+value missing, or ambiguous placement), with `status: quarantined` and `okfx_quarantine`
+saying why and what would resolve it. Their documents wait in `sources/quarantine/`. Nothing in
+it is indexed, judged, scored or published; `archivist requeue` sends it back to the inbox.
+_Avoid_: skipped, left in the inbox (only an `enrich-only` document awaiting its primary stays there)
+
 **Gap kind** / **Gap fleet**:
 A kind in `gap-kinds`, applying to concept types by id. The fleet is one gap-agent per
 applicable kind on one concept, spawned in parallel.

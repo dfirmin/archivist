@@ -19,6 +19,7 @@ from archivist.engines import enforce_pin, running_version
 from archivist.errors import ArchivistError
 from archivist.load_target import load_target
 from archivist.record_gap import prune_gaps, record_gap
+from archivist.requeue import requeue
 from archivist.workspace import prepare_target, upgrade_target
 
 
@@ -139,6 +140,18 @@ def _check_concept(args: argparse.Namespace) -> int:
             for problem in report.problems:
                 print(f"      - {problem}")
     return 1 if failed else 0
+
+
+def _requeue(args: argparse.Namespace) -> int:
+    for raw in args.draft:
+        try:
+            result = requeue(Path(raw))
+        except ArchivistError as err:
+            return _fail(err)
+        for source, target in result.moved:
+            print(f"moved     {source} → {target}")
+        print(f"PASS  {result.draft} removed; the next run authors its documents")
+    return 0
 
 
 def _listed(values: list[str] | None) -> list[str]:
@@ -318,6 +331,13 @@ def build_parser() -> argparse.ArgumentParser:
     check = commands.add_parser("check-concept", help="Check a concept's frontmatter against the contracts")
     check.add_argument("concept", nargs="+", help="Path(s) to concept .md files")
     check.set_defaults(func=_check_concept)
+
+    back = commands.add_parser(
+        "requeue",
+        help="Send a quarantined draft's documents back to the inbox and delete the draft (ADR 0005)",
+    )
+    back.add_argument("draft", nargs="+", help="Path(s) to quarantine/<file>.md")
+    back.set_defaults(func=_requeue)
 
     gap = commands.add_parser("record-gap", help="Write one kind's okfx_gaps entry on a concept")
     gap.add_argument("concept", help="Path to the concept .md")

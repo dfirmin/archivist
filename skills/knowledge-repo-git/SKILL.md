@@ -40,11 +40,11 @@ Done when `git branch --show-current` prints the run branch.
 Steps 2 and 3 run after **each group** finishes, on the same branch, so every group is its
 own commit and the work reaches origin as it is done. Step 1 runs once per run.
 
-The run's output lives in `knowledge/`, `sources/` (inbox → processed moves),
-`log.md` and `index.md`. Nothing else is staged.
+The run's output lives in `knowledge/`, `sources/` (inbox → processed or quarantine
+moves), `quarantine/` (when it exists), `log.md` and `index.md`. Nothing else is staged.
 
 ```bash
-git add knowledge sources log.md index.md
+git add knowledge sources log.md index.md $(test -d quarantine && echo quarantine)
 ```
 
 `contracts/`, `okf/`, `.claude/`, `tmp/`, `AGENTS.md` and `README.md` stay unstaged:

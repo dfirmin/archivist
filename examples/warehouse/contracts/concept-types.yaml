@@ -29,6 +29,12 @@ concept_types:
         required: true
         shape: string
         from: owners — the first product_owners email of the subject area
+    # One group per set of views: a document naming any view an existing group documents
+    # updates that group, whatever business name its title uses.
+    identity:
+      fields: [okfx_physical_views]
+      match: any
+      guidance: Compare view names case-insensitively; a view and its _INCRMTL_ sibling are the same group.
     companions:
       - concept_type: physical-view
         for_each: okfx_physical_views
@@ -58,6 +64,8 @@ concept_types:
         description: Owner of record.
         required: true
         from: owners — the first product_owners email of the subject area
+    identity:
+      fields: [okfx_subject_area]     # one overview per subject area
 
   physical-view:
     type: View
