@@ -15,6 +15,7 @@ from archivist.errors import ContractError, WorkspaceError
 from archivist.stream import StreamMonitor
 from archivist.targets import Target
 from archivist.workspace import ScaffoldState, detect_scaffold_state, scaffold_workspace
+from conftest import edit_yaml
 
 ENGINE = load_engine()
 
@@ -36,6 +37,17 @@ def test_entry_stage_must_dispatch(warehouse: Path) -> None:
     assert "without spawning 'author'" in check_entry_stage_ran(planned, ENGINE.profile, roster, inbox_documents=3)
     ran = monitor_with([("intake-planner", "Groups: 1\nGroup 1: x"), ("author", "Authored: 1")])
     assert check_entry_stage_ran(ran, ENGINE.profile, roster, inbox_documents=3) is None
+
+
+def test_an_extraction_session_counts_as_work(handbook: Path) -> None:
+    edit_yaml(handbook / "contracts/intake.yaml", lambda d: d["classes"].append(
+        {"id": "call", "description": "A call transcript.", "mode": "extract", "extract": "Keep policies."}))
+    roster = resolve_run(handbook, engine=ENGINE, pipeline="author-verify").roster
+    extracted = monitor_with([("intake-planner", "Groups: 1\nGroup 1: extract — a call\n- a.md"),
+                              ("extractor", "Extracted: 2 from a.md")])
+    assert check_entry_stage_ran(extracted, ENGINE.profile, roster, inbox_documents=1) is None
+    planned_only = monitor_with([("intake-planner", "Groups: 1\nGroup 1: extract — a call\n- a.md")])
+    assert "without spawning 'author'" in check_entry_stage_ran(planned_only, ENGINE.profile, roster, inbox_documents=1)
 
 
 def test_empty_queue_is_a_clean_exit(warehouse: Path) -> None:

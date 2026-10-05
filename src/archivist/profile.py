@@ -20,7 +20,8 @@ from archivist.errors import ContractError, DefinitionError
 
 PROFILE_FILE = "profile.yaml"
 PROFILE_KEYS = frozenset(
-    {"version", "coordinator", "planner", "default_pipeline", "agents", "pipelines", "enrichment_methods"}
+    {"version", "coordinator", "planner", "extractor", "default_pipeline", "agents", "pipelines",
+     "enrichment_methods"}
 )
 AGENT_SPEC_KEYS = frozenset({"produces", "requires", "optional", "writes", "dispatch"})
 DISPATCH_KEYS = frozenset(
@@ -48,6 +49,7 @@ class Profile:
     agents: dict[str, AgentSpec]
     pipelines: dict[str, tuple[str, ...]]
     enrichment_methods: dict[str, dict[str, Any]] = field(default_factory=dict)
+    extractor: str | None = None  # support agent that splits documents before planning (ADR 0006)
 
     @property
     def stage_agents(self) -> frozenset[str]:
@@ -56,12 +58,17 @@ class Profile:
 
 @dataclass(frozen=True, slots=True)
 class Roster:
-    """Who one run may spawn: the pipeline's stages plus the planner when it authors."""
+    """Who one run may spawn: the pipeline's stages plus the planner when it authors, and the
+    extractor when it authors on a target whose intake declares an `extract` class."""
 
     pipeline: str
     stages: tuple[str, ...]
     support: tuple[str, ...]
     authoring: bool
+
+    @property
+    def extracting(self) -> bool:
+        return len(self.support) > 1
 
     @property
     def spawnable(self) -> tuple[str, ...]:
@@ -94,10 +101,12 @@ def load_profile(root: Path | None = None, *, agent_names: set[str], skill_names
     if unknown:
         raise DefinitionError(f"{path}: unsupported key(s): {', '.join(unknown)}")
 
-    coordinator, planner = raw.get("coordinator"), raw.get("planner")
+    coordinator, planner, extractor = raw.get("coordinator"), raw.get("planner"), raw.get("extractor")
     for role, name in (("coordinator", coordinator), ("planner", planner)):
         if not isinstance(name, str) or name not in agent_names:
             raise DefinitionError(f"{path}: {role} {name!r} is not an agent")
+    if extractor is not None and (not isinstance(extractor, str) or extractor not in agent_names):
+        raise DefinitionError(f"{path}: extractor {extractor!r} is not an agent")
 
     agents: dict[str, AgentSpec] = {}
     for name, spec in (raw.get("agents") or {}).items():
@@ -137,6 +146,10 @@ def load_profile(root: Path | None = None, *, agent_names: set[str], skill_names
         agents[planner] = AgentSpec(planner)
     if agents[planner].dispatch:
         raise DefinitionError(f"{path}: the planner is support, not a stage; it takes no dispatch")
+    if extractor is not None:
+        agents.setdefault(extractor, AgentSpec(extractor))
+        if agents[extractor].dispatch:
+            raise DefinitionError(f"{path}: the extractor is support, not a stage; it takes no dispatch")
 
     stage_agents = {n for n, s in agents.items() if s.dispatch}
     pipelines = {
@@ -155,7 +168,7 @@ def load_profile(root: Path | None = None, *, agent_names: set[str], skill_names
             raise DefinitionError(f"{path}: enrichment method {name!r} names missing skill(s): {', '.join(missing)}")
         methods[str(name)] = {"description": (spec or {}).get("description", ""), "skills": list(skills)}
 
-    return Profile(coordinator, planner, default, agents, pipelines, methods)
+    return Profile(coordinator, planner, default, agents, pipelines, methods, extractor)
 
 
 def check_pipeline(name: str, stages: Any, stage_agents: set[str] | frozenset[str], *, label: str) -> tuple[str, ...]:
@@ -187,6 +200,7 @@ def resolve_roster(
     *,
     authoring: bool | None,
     default: str | None = None,
+    extracting: bool = False,
 ) -> Roster:
     """Pick the run's pipeline. Without authoring (an existing concept) producing stages drop out.
 
@@ -208,7 +222,9 @@ def resolve_roster(
         stages = tuple(s for s in stages if not profile.agents[s].produces)
         if not stages:
             raise ContractError(f"pipeline {chosen!r} has no stage left once authoring is skipped")
-    support = (profile.planner,) if authoring else ()
+    support: tuple[str, ...] = (profile.planner,) if authoring else ()
+    if authoring and extracting and profile.extractor:
+        support = (*support, profile.extractor)
     return Roster(chosen, stages, support, authoring)
 
 

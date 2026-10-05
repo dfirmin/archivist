@@ -118,3 +118,11 @@ def test_placement_records_an_outcome_and_the_match(concept: Path) -> None:
     assert found == ["`okfx_placement.matched` names the identity value an update matched"]
     found = problems(concept, "okfx_team: platform", "okfx_team: platform\nokfx_placement: {outcome: merge}")
     assert found == ["`okfx_placement.outcome: merge` is not one of new, update"]
+
+
+def test_a_stub_for_a_document_without_a_concept_type_may_omit_type(draft: Path) -> None:
+    draft.write_text(QUARANTINED.replace("type: Runbook\n", ""), encoding="utf-8")
+    assert check_concept(draft).problems == []
+    draft.write_text(QUARANTINED.replace("type: Runbook\n", "").replace("status: quarantined", "status: draft"),
+                     encoding="utf-8")
+    assert "`type` is missing (OKF requires it)" in check_concept(draft).problems

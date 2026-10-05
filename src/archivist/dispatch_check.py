@@ -61,6 +61,8 @@ def check_entry_stage_ran(
     stage = entry_stage(profile, roster)
     if stage in monitor.dispatched_agents:
         return None
+    if roster.extracting and profile.extractor in monitor.dispatched_agents:
+        return None  # an extraction session ends before authoring (ADR 0006 §4)
     if inbox_documents == 0 or planned_groups(monitor, profile.planner) == 0:
         return None
     return (

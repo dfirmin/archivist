@@ -161,6 +161,26 @@ It records the decision as `okfx_placement`. A type without `identity` is identi
 fields the reference data or the document fixes (an entity name, a product code, a team plus a
 task). See `examples/handbook` for `title` with matching guidance and `[title, okfx_team]`.
 
+## Transcripts and other multi-topic documents
+
+A meeting transcript talks about several things, and one concept comes from one group of
+documents. Give such documents a class with `mode: extract` and a rule saying what to keep:
+
+```yaml
+- id: meeting-transcript
+  description: A recorded meeting or call, as an exported transcript.
+  mode: extract
+  extract: >-
+    Keep passages that define, change or question a physical view, a metric or a business
+    rule, one extract per view, metric or rule. Drop scheduling, introductions and small talk.
+```
+
+Before planning, the extractor writes one extract per topic into the inbox: the passages quoted
+word for word with speaker and timestamp, under a one-line `About:`. The transcript moves to
+`sources/processed/`. From then on each extract is an ordinary document, placed by identity like
+any other. A transcript with nothing the rule keeps is quarantined. An extract class names no
+`concept_type` or `sections`. See ADR 0006.
+
 ## Quarantine
 
 What the author cannot place goes to `quarantine/` at the repository root, not `knowledge/`:

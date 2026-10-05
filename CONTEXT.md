@@ -104,6 +104,14 @@ The main agent (`claude --agent conductor`). Reads the run plan, spawns stages, 
 catalog, owns git. Never does a stage's work.
 _Avoid_: orchestrator
 
+**Extractor** / **Extract**:
+The support agent that splits a noisy multi-topic document (a meeting transcript, a long
+export) of an intake class with `mode: extract` before planning. It writes one **extract** per
+topic into the inbox: the passages about that topic quoted verbatim, under a one-line `About:`,
+with `extracted_from` naming the original. Extracts are ordinary inbox documents from then on.
+See ADR 0006.
+_Avoid_: summary (an extract never rewords)
+
 **Producing stage**:
 The stage that creates concepts from the inbox (`produces: true`; the author). It is the
 entry stage of an inbox run and drops out of a run on an existing concept.

@@ -327,6 +327,7 @@ def run_branch(inbox_file: str | None, *, now: datetime | None = None) -> str:
 def build_kickoff(
     *,
     inbox_file: str | None = None,
+    inbox_documents: Sequence[str] = (),
     inbox_limit: int = 0,
     concept_files: Sequence[str] = (),
     kinds: Sequence[str] | None = None,
@@ -345,6 +346,14 @@ def build_kickoff(
         work = (
             f"Work: these {len(concept_files)} existing concepts, one group each, in this order. "
             f"Run the stages on each.\n{listed}"
+        )
+    elif inbox_documents:
+        # ADR 0006 §5: on a target that extracts, named documents are planned first, so a
+        # transcript named directly is split instead of reaching the author whole.
+        listed = "\n".join(f"- `{d}`" for d in inbox_documents)
+        work = (
+            f"Work: only these inbox documents, planned first (the planner on these documents "
+            f"only, never the rest of the inbox):\n{listed}"
         )
     elif inbox_file:
         work = f"Work: author the inbox document `{inbox_file}`."
@@ -436,9 +445,14 @@ def run_conductor_agent(
     env["RUN_BRANCH"] = branch
     scanning_inbox = not (inbox_file or on_concepts)
 
+    # ADR 0006 §5: a named document on a target that extracts is planned, and the extracts it
+    # yields are followed in later sessions until every one has left the inbox.
+    named: list[str] = [inbox_file] if inbox_file and roster.extracting else []
+
     def kickoff_for(*, limit: int, continue_branch: bool, concepts: Sequence[str] = ()) -> str:
         return build_kickoff(
-            inbox_file=inbox_file,
+            inbox_file=None if named else inbox_file,
+            inbox_documents=tuple(named),
             inbox_limit=limit,
             concept_files=concepts,
             kinds=kinds or None,
@@ -446,7 +460,7 @@ def run_conductor_agent(
             branch=branch,
             stages=roster.stages,
             pipeline=roster.pipeline,
-            one_group=scanning_inbox,
+            one_group=scanning_inbox or bool(named),
             continue_branch=continue_branch,
         )
 
@@ -470,10 +484,16 @@ def run_conductor_agent(
         print(f"fence     {', '.join(sorted(fence)) if fence is not None else 'off (a stage writes bodies)'}")
     print(f"plan      {prepared.plan.relative_to(workspace)}\n")
 
-    def inbox_size() -> int | None:
-        if not scanning_inbox:
-            return None
-        return len(list((workspace / INBOX_DIR).glob("*.md")))
+    def inbox_docs() -> set[str]:
+        return {f"{INBOX_DIR}/{p.name}" for p in (workspace / INBOX_DIR).glob("*.md")}
+
+    def pending() -> set[str]:
+        """The documents this run still has to take from the inbox (empty for other runs)."""
+        if scanning_inbox:
+            return inbox_docs()
+        if named:
+            return set(named) & inbox_docs()
+        return set()
 
     # A named document or concept is one session. An inbox scan is one session per group: a
     # single context cannot hold a whole inbox, so each session plans the remaining inbox and
@@ -483,11 +503,16 @@ def run_conductor_agent(
     planner_retries = 0
     while True:
         session += 1
-        before = inbox_size()
+        before_docs = inbox_docs()
+        waiting = pending()
+        before = len(waiting) if (scanning_inbox or named) else None
         batch = queue[session - 1] if on_concepts else ()
         if session > 1 and on_concepts:
             kickoff = kickoff_for(limit=0, continue_branch=not skip_publish, concepts=batch)
             print(f"\n=== session {session}: next {len(batch)} concept(s) ===\n")
+        elif session > 1 and named:
+            kickoff = kickoff_for(limit=0, continue_branch=not skip_publish)
+            print(f"\n=== session {session}: next group ({len(named)} named or extracted documents left) ===\n")
         elif session > 1:
             remaining = inbox_limit - consumed_total if inbox_limit else 0
             kickoff = kickoff_for(limit=remaining, continue_branch=not skip_publish)
@@ -521,7 +546,7 @@ def run_conductor_agent(
         if code != 0:
             print("FAIL  conductor session", file=sys.stderr)
             return code or 1
-        if scanning_inbox and (before or 0) > 0 and planner_gave_up(monitor, profile.planner):
+        if (scanning_inbox or named) and (before or 0) > 0 and planner_gave_up(monitor, profile.planner):
             if planner_retries >= 1:
                 print("FAIL  the planner twice returned no groups for a non-empty inbox", file=sys.stderr)
                 return 1
@@ -545,13 +570,18 @@ def run_conductor_agent(
             if session >= len(queue):
                 break
             continue
-        if not scanning_inbox:
+        if not (scanning_inbox or named):
             break
-        after = inbox_size() or 0
-        consumed_total += (before or 0) - after
-        if planned_groups(monitor, profile.planner) == 0 or after == 0:
+        # Progress is which documents left the inbox, not the count: an extraction session
+        # takes one document and adds several extracts (ADR 0006).
+        after_docs = inbox_docs()
+        taken = waiting - after_docs
+        consumed_total += len(taken)
+        if named:
+            named = sorted((set(named) & after_docs) | (after_docs - before_docs))
+        if planned_groups(monitor, profile.planner) == 0 or not pending():
             break
-        if (before or 0) - after <= 0:
+        if not taken:
             print("[loop] this session took no inbox documents; stopping", file=sys.stderr)
             break
         if inbox_limit and consumed_total >= inbox_limit:

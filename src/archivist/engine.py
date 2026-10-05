@@ -71,7 +71,8 @@ def resolve_run(
         )
     pipelines = merged_pipelines(engine.profile, contracts.pipelines)
     roster = resolve_roster(
-        engine.profile, pipelines, pipeline, authoring=authoring, default=contracts.default_pipeline
+        engine.profile, pipelines, pipeline, authoring=authoring, default=contracts.default_pipeline,
+        extracting=contracts.extracts,
     )
     required = required_contracts(engine.profile, roster)
     check_requirements(contracts, required)

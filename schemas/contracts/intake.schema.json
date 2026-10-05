@@ -70,9 +70,15 @@
           "enum": [
             "create",
             "partial",
-            "enrich-only"
+            "enrich-only",
+            "extract"
           ],
-          "description": "With no existing concept: create it fully, create it with only the routed sections, or leave the document for a later run."
+          "description": "With no existing concept: create it fully, create it with only the routed sections, or leave the document for a later run. `extract`: the document is split into verbatim topic extracts before planning (ADR 0006); the class names no concept_type or sections."
+        },
+        "extract": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required with mode `extract`: which passages are worth keeping, and what one extract covers (ADR 0006)."
         },
         "sections": {
           "oneOf": [

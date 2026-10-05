@@ -39,6 +39,8 @@ def build_run_plan(
         "pipeline": roster.pipeline,
         "entry_stage": entry_stage(profile, roster),
         "planner": profile.planner if roster.authoring else None,
+        # ADR 0006: documents of an `extract` intake class go to this agent before planning.
+        "extractor": profile.extractor if roster.extracting else None,
         "stages": stages,
         # ADR 0004: `kinds` narrows the gap fleet; "all" means every enabled, applicable kind.
         "scope": {"kinds": list(kinds) if kinds else "all"},

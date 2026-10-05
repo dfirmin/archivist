@@ -116,3 +116,52 @@ def test_engine_agents_and_core_skills_name_no_domain() -> None:
         if word in path.read_text(encoding="utf-8").lower()
     ]
     assert offenders == []
+
+
+TRANSCRIPT_CLASS = {
+    "id": "meeting-transcript",
+    "description": "A recorded meeting, as an exported transcript.",
+    "mode": "extract",
+    "extract": "Keep passages about a policy or a runbook; one extract per policy or runbook.",
+}
+
+
+def _add_class(handbook: Path, cls: dict) -> None:
+    edit_yaml(handbook / "contracts/intake.yaml", lambda d: d["classes"].append(dict(cls)))
+
+
+def test_extractor_joins_the_roster_only_when_the_intake_extracts(handbook: Path) -> None:
+    plain = resolve_run(handbook, engine=ENGINE, pipeline="author-verify")
+    assert "extractor" not in plain.roster.spawnable and not plain.roster.extracting
+    _add_class(handbook, TRANSCRIPT_CLASS)
+    run = resolve_run(handbook, engine=ENGINE, pipeline="author-verify")
+    assert run.roster.spawnable == ("intake-planner", "extractor", "author", "verifier")
+    on_concepts = resolve_run(handbook, engine=ENGINE, pipeline="full", authoring=False)
+    assert "extractor" not in on_concepts.roster.spawnable  # nothing is extracted on existing concepts
+    plan = yaml.safe_load(prepare_agent_workspace(handbook, pipeline="author-verify").plan.read_text(encoding="utf-8"))
+    assert plan["extractor"] == "extractor"
+
+
+def test_an_extract_class_names_no_concept_type_or_sections(handbook: Path) -> None:
+    _add_class(handbook, {**TRANSCRIPT_CLASS, "concept_type": "policy", "sections": "all"})
+    with pytest.raises(ContractError) as err:
+        resolve_run(handbook, engine=ENGINE)
+    assert "takes no concept_type" in str(err.value) and "takes no sections" in str(err.value)
+
+
+def test_an_extract_class_needs_its_rule(handbook: Path) -> None:
+    _add_class(handbook, {k: v for k, v in TRANSCRIPT_CLASS.items() if k != "extract"})
+    with pytest.raises(ContractError, match="has mode extract but no `extract` rule"):
+        resolve_run(handbook, engine=ENGINE)
+
+
+def test_an_extract_rule_needs_mode_extract(handbook: Path) -> None:
+    _add_class(handbook, {**TRANSCRIPT_CLASS, "mode": "create", "concept_type": "policy"})
+    with pytest.raises(ContractError, match="has an `extract` rule but mode 'create'"):
+        resolve_run(handbook, engine=ENGINE)
+
+
+def test_named_documents_are_planned_first_on_a_target_that_extracts() -> None:
+    text = build_kickoff(inbox_documents=("sources/inbox/call.md",), one_group=True, skip_publish=True)
+    assert "only these inbox documents, planned first" in text and "- `sources/inbox/call.md`" in text
+    assert "author the inbox document" not in text

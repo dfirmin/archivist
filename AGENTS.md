@@ -141,6 +141,7 @@ read, and what you checked:
 | Role | Must prove |
 |---|---|
 | author | the path, type, tags and okfx_ fields follow the target's contracts; `okfx_placement` matches what was there (an update lands on the existing concept); sections follow the structure and their owners; the document moved to `sources/processed/` and is in `sources`, or what could not be placed is a quarantined draft with its document in `sources/quarantine/`; `okfx_gaps`, `okfx_confidence`, `verified` untouched |
+| extractor | one extract per topic the contract's `extract` rule keeps; every quoted line found verbatim in the original (`grep -F`); a correction quoted with what it corrects; the original moved to `sources/processed/`, or quarantined as a stub when nothing is kept |
 | enricher | only `owner: enricher` sections changed; rows cite a file at a commit; clones removed |
 | verifier | lost source content restored, cited, under existing headings; one `verified` entry appended; nothing else in frontmatter |
 | gap-agent | one kind; the write went through `record-gap`; body unchanged; a `--kind` run touched only that kind's entry |

@@ -93,6 +93,11 @@ def check_concept(path: Path) -> ConceptReport:
 
     contracts = _find_contracts(path)
     okf_type = data.get("type")
+    if not okf_type and data.get("status") == QUARANTINED:
+        # A stub for a document whose class names no concept type (an extract class, ADR 0006).
+        _check_location(path, contracts.workspace, data, report)
+        _check_sources(data, contracts, report)
+        return report
     if not okf_type:
         report.problems.append("`type` is missing (OKF requires it)")
         return report
@@ -126,6 +131,11 @@ def check_concept(path: Path) -> ConceptReport:
         else:
             report.problems.append(f"`{name}` is neither an OKF field nor an okfx_ field")
 
+    _check_sources(data, contracts, report)
+    return report
+
+
+def _check_sources(data: dict[str, Any], contracts: TargetContracts, report: ConceptReport) -> None:
     sources = data.get("sources")
     if sources is not None:
         if not isinstance(sources, list):
@@ -136,7 +146,6 @@ def check_concept(path: Path) -> ConceptReport:
                     report.problems.append(f"`sources[{i}]` needs a `resource`")
                 elif not (contracts.workspace / str(entry["resource"])).is_file():
                     report.problems.append(f"`sources[{i}].resource` does not exist: {entry['resource']}")
-    return report
 
 
 def _check_location(path: Path, workspace: Path, data: dict[str, Any], report: ConceptReport) -> bool:

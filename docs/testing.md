@@ -139,6 +139,11 @@ your edits.
    archivist run-conductor /tmp/kb --inbox-file sources/inbox/<doc>.md --skip-publish
    ```
 
+   On a target whose intake has a `mode: extract` class, a named document is planned first
+   (ADR 0006): a transcript gets `[dispatch] extractor` and the run follows its extracts
+   through further sessions until each has left the inbox; any other document goes on to the
+   author as usual.
+
    Read the stream for one `[dispatch]` line per stage in run-plan order. Then inspect the
    concept under `knowledge/`, and the sub-agent transcripts (`/out/transcripts/`, or
    `CHILD_SESSION_TRANSCRIPT_DIR` when set) for any agent that behaved oddly.
