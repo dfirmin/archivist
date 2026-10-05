@@ -30,7 +30,6 @@ how it is judged.
 - [Project structure](#project-structure)
 - [Development](#development)
 - [Contributing](#contributing)
-- [Status and roadmap](#status-and-roadmap)
 - [License](#license)
 
 ## Why Archivist
@@ -404,31 +403,6 @@ target, inspected by hand. [`AGENTS.md`](AGENTS.md) lists what each agent must s
    `ready-for-agent`, `ready-for-human`, `wontfix`.
 3. Keep tests green, and attach live-run evidence for any agent, skill or dispatch change.
 4. Record any new deterministic step in [`docs/adr/`](docs/adr/).
-
-## Status and roadmap
-
-Early development. The deterministic layer is tested, and the full pipeline has run live on both
-example targets ([evidence](docs/live-proof/2026-10-04.md)).
-
-Compiler:
-
-- [x] Live proof on `examples/warehouse` and `examples/minimal`
-- [x] Per-class concept-type routing and recorded structure choice (`okfx_structure`)
-- [ ] Live proof of publishing (branch, PR, gap issues) and of `code-logic` enrichment
-- [ ] Live proof in `anthropic-api` and `gateway-key` modes, inside Docker
-- [ ] Glossary reconciliation agent
-- [ ] CI for the offline test suite
-
-Closing the loop (planned):
-
-- [ ] Gap lifecycle: close the issue when a later run records the gap absent
-- [ ] `answer` and `correction` document classes, so an expert's reply is an attributed source
-- [ ] Export targets: an index file for ontology tools, catalog descriptions, semantic-layer
-      instruction fields, generated from the repo
-- [ ] Knowledge assistants that answer with citations, confidence and open gaps, and ask the
-      owner when they cannot
-- [ ] A librarian agent that pulls documents from permitted sources, drops them in the inbox and
-      opens pull requests, reachable from Teams
 
 ## License
 
