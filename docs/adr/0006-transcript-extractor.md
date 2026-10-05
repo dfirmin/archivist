@@ -1,6 +1,7 @@
 # 0006 — An extractor turns one noisy multi-topic document into verbatim topic extracts
 
-Status: proposed, 2026-10-05 (design agreed; §5 chosen by the owner). Accepted once proven live on two targets.
+Status: accepted, 2026-10-05 (§5 chosen by the owner). Proven live on the warehouse and handbook
+examples (`docs/live-proof/2026-10-05.md`).
 
 ## Context
 
@@ -134,3 +135,19 @@ substring of the named transcript) is the first candidate, with its own ADR, the
   engine, decides what is kept. Each extraction judgement is repeated three times.
 - File formats (`.vtt`, `.docx`, `.pdf`) are a separate decision; Teams transcripts are commonly
   exported as `.vtt` or `.docx`, so they will be its first users.
+
+## Found in live proof
+
+- **An extract must join its primary document's group.** A target's `grouping` prose need not
+  mention extracts, so the planner applies an engine rule: an extract joins the group of the
+  other documents about the same concept, after them. Without it the handbook's retro extract
+  was authored alone and the outage runbook was written twice.
+- **A waiting group must not end a scan.** Once the inbox is planned in sessions, an
+  amendment waiting for its primary document can be the first group; the author rightly takes
+  nothing and the loop used to stop. The runner now holds such a group and plans on without
+  it (the kickoff lists held documents). A deterministic step in the run loop, which Python
+  already owns.
+- **A class description is the planner's only test for "transcript".** "A recorded call" sent
+  written meeting notes to the extractor; describing the shape of a transcript (timestamped
+  speaker lines; notes are not transcripts) fixed it.
+

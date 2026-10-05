@@ -42,7 +42,7 @@ Transcripts are extracted in the first session; their extracts join the groups b
 | `memo-total-loss-threshold-change.md` | amendment | same group: **updated** to 70% for losses from 2027-01-01, 75% before |
 | ↳ extract from `2026-10-03-rules-triage-call.md` (BR-CLM-014) | transcript | **updated**: leased-vehicle exception from 2026-11-01 |
 | ↳ extract from `2026-09-30-claims-dw-office-hours.md` (CUSTCASE_INCRMTL_SV) | transcript | Customer Case **updated**: LAST_UPDT_TS is UTC |
-| ↳ extract from `2026-09-30-claims-dw-office-hours.md` (CLAIM_PMT_SV) | transcript | **new** Claim Payment view group, partial (PMT_TYPE_CD values, grain) |
+| ↳ extract from `2026-09-30-claims-dw-office-hours.md` (CLAIM_PMT_SV) | transcript | **new** CLAIM_PMT_SV view group, partial (PMT_TYPE_CD values, grain); titled by the view name, since the call gives no business name |
 | ↳ extract from `2026-09-30-claims-dw-office-hours.md` (LEGACY_FEED) | transcript | **quarantined** stub: unresolved subject area for LEGACY_FEED |
 | `fw-legacy-feed-question.md` | messy email | **quarantined** stub: unresolved subject area for LEGACY_FEED |
 | `metric-policy-churn-rate.md` | draft | **quarantined** stub: no metrics row for Policy Churn Rate |
@@ -56,4 +56,7 @@ fictional; use the `no-code` pipeline unless you point them at real repos.
 
 ## Last tested
 
-Not yet tested on this engine version (see `docs/live-proof/` in the engine).
+2026-10-05, engine commit `448ee47` (`--engine current`, pipeline `no-code`): every document
+ended as the table says. 8 authored concepts with their companions, 5 quarantined, 1 held. All
+58 quoted lines in the 8 extracts were found verbatim in their transcripts. Details and the
+defects fixed on the way: `docs/live-proof/2026-10-05.md` in the engine.

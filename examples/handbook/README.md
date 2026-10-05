@@ -30,7 +30,7 @@ Run the whole inbox (`archivist run-conductor <copy> --skip-publish`).
 | `deploy-web-app.md` | clean | **new** runbook, routine-procedure (platform) |
 | `database-outage-response.md` | clean | **new** runbook, incident-response (platform)… |
 | ↳ extract from `2026-10-02-db-outage-retro-call.md` (outage runbook) | transcript | …then **updated**: the incident commander decides on promotion; page `#dba-oncall` after 15 minutes (the call corrects 30 to 15) |
-| ↳ extract from `2026-10-02-db-outage-retro-call.md` (post-incident reviews) | transcript | **new** platform policy: a post-incident review within five business days for every customer-facing incident (or an update to the outage runbook's review step; both are reasonable readings, record which) |
+| ↳ extract from `2026-10-02-db-outage-retro-call.md` (post-incident reviews) | transcript | **new** Post-Incident Review policy (platform): a review within five business days for every customer-facing incident |
 | `phishing-incident-notes.md` | rough notes | **new** runbook, incident-response (security) |
 | `slack-oncall-handoff.md` | chat export | **new** runbook, routine-procedure (platform) |
 | `backfill-pipeline-partition.md` | clean | **new** runbook, routine-procedure (data-engineering); `missing_rollback` judged |
@@ -39,4 +39,9 @@ Run the whole inbox (`archivist run-conductor <copy> --skip-publish`).
 
 ## Last tested
 
-Not yet tested on this engine version (see `docs/live-proof/` in the engine).
+2026-10-05, engine commit `448ee47` (`--engine current`). A full inbox run (handbook pipeline)
+on the commit before found two defects: two runbooks for one outage, and the phishing notes
+sent to the extractor. After the fixes, a focused run of the outage document with the retro
+call, the phishing notes, the chat export and the parental-leave amendment matched the table,
+and the amendment waited in each of three repeat runs. Details:
+`docs/live-proof/2026-10-05.md` in the engine.

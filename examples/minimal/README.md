@@ -12,4 +12,5 @@ concept; no reference data, gaps or scoring.
 
 ## Last tested
 
-Not yet tested on this engine version (see `docs/live-proof/` in the engine).
+2026-10-05, engine `feat/transcript-extractor` (`--engine current`): matched. The title kept
+the year ("Business Travel Policy (2026)"), since this example has no naming rule.
