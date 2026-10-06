@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -279,6 +280,9 @@ def scaffold_workspace(
         skipped.append(_INDEX)
 
     _refresh_examples(workspace, engine_examples_root().parent, render("examples-README.md"), written, skipped)
+    if target.mirrors:
+        _mirror_example(workspace, engine_examples_root().parent, target, read_pin(workspace) or pin(),
+                        written, skipped)
 
     return ScaffoldResult(
         state=ScaffoldState.SCAFFOLDED,
@@ -313,6 +317,53 @@ def _refresh_examples(workspace: Path, engine_root: Path, readme: str | None,
             if source.is_file():
                 put(f"{_EXAMPLES_DIR}/{example.name}/{source.relative_to(example).as_posix()}",
                     source.read_text(encoding="utf-8"))
+
+
+def _mirror_example(workspace: Path, engine_root: Path, target: Target, pin: str,
+                    written: list[str], skipped: list[str]) -> None:
+    """Make the target's contracts and inbox an exact copy of the example it mirrors.
+
+    The example's ``target.yaml`` keeps its contracts but takes the target's slug, name and
+    ``pin``. Contract files and inbox documents the example lacks are removed; knowledge,
+    processed sources and quarantine are never touched.
+    """
+    example = engine_root / "examples" / str(target.mirrors)
+    if not (example / "contracts").is_dir():
+        raise WorkspaceError(f"{target.slug} mirrors {target.mirrors!r}, which this engine's examples/ lacks")
+
+    def target_index(text: str) -> str:
+        for key, value in (("slug", target.slug), ("name", target.name), ("engine", pin)):
+            line = f"{key}: {value}"
+            text, count = re.subn(rf"^{key}:.*$", line, text, count=1, flags=re.MULTILINE)
+            if not count:
+                text = text.replace("version: 1\n", f"version: 1\n{line}\n", 1)
+        return text
+
+    desired: dict[str, str] = {}
+    for source in sorted((example / "contracts").rglob("*")):
+        if source.is_file():
+            rel = f"contracts/{source.relative_to(example / 'contracts').as_posix()}"
+            text = source.read_text(encoding="utf-8")
+            desired[rel] = target_index(text) if rel == _INDEX else text
+    inbox = example / INBOX_DIR
+    for source in sorted(inbox.glob("*")) if inbox.is_dir() else ():
+        if source.is_file():
+            desired[f"{INBOX_DIR}/{source.name}"] = source.read_text(encoding="utf-8")
+
+    for rel, text in desired.items():
+        destination = workspace / rel
+        if destination.is_file() and destination.read_text(encoding="utf-8") == text:
+            skipped.append(rel)
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(text, encoding="utf-8")
+        written.append(f"{rel} (from examples/{target.mirrors})")
+    for root in (workspace / "contracts", workspace / INBOX_DIR):
+        for path in sorted(root.rglob("*")) if root.is_dir() else ():
+            rel = path.relative_to(workspace).as_posix()
+            if path.is_file() and rel not in desired and path.name != ".gitkeep":
+                path.unlink()
+                written.append(f"{rel} (removed: not in examples/{target.mirrors})")
 
 
 def _migrate_legacy_layout(workspace: Path, written: list[str]) -> bool:
@@ -713,6 +764,8 @@ def upgrade_target(
               .replace("{{name}}", target.name).replace("{{engine}}", pin)
               if readme_template.is_file() else None)
     _refresh_examples(workspace, source, readme, written, skipped)
+    if target.mirrors:  # a mirror follows the example of the engine it moves to
+        _mirror_example(workspace, source, target, pin, written, skipped)
     for relative in _LAYOUT_FILES:
         template, destination = source / "bundle-template" / relative, workspace / relative
         if template.is_file() and not destination.exists():

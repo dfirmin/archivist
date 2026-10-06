@@ -71,6 +71,13 @@ Use a target that exists for testing, never a team's real knowledge repo:
 
   That opens an onboarding PR with starter contracts and examples. Merge it, then replace the
   starters with the contracts you want to test.
+- **A mirror of an example**, so a published run tests exactly what the example's README
+  promises. `dfirmin/archivist-knowledge-example` is registered with `mirrors: warehouse`:
+  onboarding seeds it with that example's contracts and inbox (slug, name and pin its own), and
+  every `prepare-target --upgrade` copies them again from the engine version it moves to, so
+  the repo cannot drift from the example. Change the example in the engine, never the mirror.
+  Test-run PRs on a mirror stay open for review and are never merged, so `main` keeps the
+  example's inbox for the next run.
 
 **Source documents.** The engine's value is turning messy documents into structured ones, so
 every live test mixes:
