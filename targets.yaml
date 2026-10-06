@@ -33,3 +33,11 @@ targets:
     type: test
     status: active
     auto_trigger: false
+
+  - slug: archivist-knowledge-example
+    name: Archivist Knowledge Example
+    description: Live test target mirroring examples/warehouse exactly (contracts and inbox), including publishing
+    target_repo: https://github.com/dfirmin/archivist-knowledge-example
+    type: test
+    status: active
+    auto_trigger: false
