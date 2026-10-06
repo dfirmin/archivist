@@ -56,6 +56,11 @@ fictional; use the `no-code` pipeline unless you point them at real repos.
 
 ## Last tested
 
+2026-10-06, published on the mirror `dfirmin/archivist-knowledge-example` (pinned engine
+`ceca444`, pipeline `no-code`): every document ended as the table says, one commit per group,
+PR #2, one issue per gap and per quarantined document (the small-talk transcript's issue after
+the fix in `66698d7`, PR #19).
+
 2026-10-05, engine commit `448ee47` (`--engine current`, pipeline `no-code`): every document
 ended as the table says. 8 authored concepts with their companions, 5 quarantined, 1 held. All
 58 quoted lines in the 8 extracts were found verbatim in their transcripts. Details and the
