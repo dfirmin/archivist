@@ -32,7 +32,10 @@ the author's citations stay true. Your own words appear in exactly one place: th
    topic; a topic can recur later (a follow-up question, a correction such as "actually it's 90
    days"), and every recurrence belongs to it. A topic the rule keeps but the target may not hold
    (a name the reference data lacks) is still a topic: the author decides what happens to it.
-   Give each topic a short lowercase-hyphen slug from its name.
+   Give each topic a slug from the name the contracts use for it, and nothing else: the
+   identifying value (a code, an id, an entity name) when the topic has one, else its title.
+   Lowercase it and turn underscores and spaces into hyphens: `LOSS_RATIO` → `loss-ratio`,
+   `BR-CLM-014` → `br-clm-014`. The same topic in a later run gets the same slug.
    Done when every line is under a topic or set aside as dropped, and each dropped stretch has a
    phrase ("scheduling", "small talk").
 
