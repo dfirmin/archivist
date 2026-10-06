@@ -42,3 +42,4 @@ targets:
     status: active
     auto_trigger: false
     mirrors: warehouse   # contracts and inbox are examples/warehouse, re-copied on every upgrade
+    # owners: ['@acme/kb-owners']   # optional: CODEOWNERS for the scaffold; default is whoever scaffolds

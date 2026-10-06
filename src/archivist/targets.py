@@ -32,6 +32,8 @@ class Target:
     # A test target that mirrors one of the engine's examples/: its contracts and inbox are
     # that example's, re-copied on onboarding and on every engine upgrade.
     mirrors: str | None = None
+    # Code owners for the scaffold's CODEOWNERS (users or @org/team). Empty: whoever scaffolds.
+    owners: tuple[str, ...] = ()
 
     @property
     def active(self) -> bool:
@@ -91,6 +93,17 @@ def _mirrors(raw: dict[str, Any], *, context: str) -> str | None:
     return value.strip()
 
 
+def _owners(raw: dict[str, Any], *, context: str) -> tuple[str, ...]:
+    value = raw.get("owners")
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and re.fullmatch(r"@[\w.-]+(/[\w.-]+)?", item.strip()) for item in value
+    ):
+        raise TargetConfigError(f"{context}: 'owners' must be a list of @user or @org/team handles")
+    return tuple(item.strip() for item in value)
+
+
 def load_targets(registry_path: Path | None = None) -> tuple[Target, ...]:
     path = (registry_path or project_root() / "targets.yaml").resolve()
     data = _load_mapping(path)
@@ -119,6 +132,7 @@ def load_targets(registry_path: Path | None = None) -> tuple[Target, ...]:
             status=_required_text(raw, "status", context=context),
             auto_trigger=bool(raw.get("auto_trigger", False)),
             mirrors=_mirrors(raw, context=context),
+            owners=_owners(raw, context=context),
         )
         if target.status not in {"active", "inactive"}:
             raise TargetConfigError(
