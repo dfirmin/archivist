@@ -62,9 +62,10 @@ Done when the queue is set. `Groups: 0` is a clean exit: say so and stop. Otherw
 **An `extract` group comes first and ends the session.** When the planner's first group is
 `extract`, spawn the plan's `extractor` once per document in it, all in **one message**:
 description `extract-<file stem>`, prompt `Extract sources/inbox/<file>.md.` Record each
-report's extracts and quarantined stub. When publishing, commit and push (**knowledge-repo-git**
-§2–3), then write the summary and stop: the next session plans the extracts with the rest of
-the inbox. No stage and no other group runs in this session.
+report's extracts and quarantined stub. When publishing, publish as in §4: commit and push,
+open or reuse the pull request, and file an issue for each stub the extractor quarantined
+(**file-gap-issues** §5). Then write the summary and stop: the next session plans the extracts
+with the rest of the inbox. No stage and no other group runs in this session.
 
 When the kickoff says to publish, take the branch it names now (**knowledge-repo-git**).
 
