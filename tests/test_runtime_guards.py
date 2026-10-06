@@ -147,6 +147,58 @@ def test_prepare_target_uses_git_and_rest_only(tmp_path: Path) -> None:
     assert any(c[:3] == ["gh", "api", "repos/o/r/pulls"] for c in gh)
 
 
+class PrRefusingRunner(FakeRunner):
+    """Like FakeRunner, but GitHub refuses to open the pull request."""
+
+    def __init__(self, existing: str = "") -> None:
+        super().__init__()
+        self.existing = existing
+
+    def run(self, args, *, cwd=None):  # type: ignore[no-untyped-def]
+        import subprocess
+
+        if args[:2] == ["gh", "api"] and "POST" in args and any(a.endswith("/pulls") for a in args):
+            self.calls.append(list(args))
+            return subprocess.CompletedProcess(args, 1, "", "Resource not accessible by personal access token (HTTP 403)")
+        if args[:2] == ["gh", "api"] and any("/pulls?head=" in a for a in args):
+            self.calls.append(list(args))
+            return subprocess.CompletedProcess(args, 0, self.existing, "")
+        return super().run(args, cwd=cwd)
+
+
+def _kb_registry(tmp_path: Path) -> Path:
+    registry = tmp_path / "targets.yaml"
+    registry.write_text(
+        "targets:\n  - {slug: kb, name: KB, description: d, target_repo: 'https://github.com/o/r',"
+        " type: docs, status: active}\n",
+        encoding="utf-8",
+    )
+    return registry
+
+
+def test_a_refused_pull_request_says_the_branch_is_pushed_and_where_to_open_it(tmp_path: Path) -> None:
+    from archivist.workspace import prepare_target
+
+    runner = PrRefusingRunner()
+    with pytest.raises(WorkspaceError) as caught:
+        prepare_target(target_slug="kb", workspace=tmp_path / "kb", registry_path=_kb_registry(tmp_path),
+                       runner=runner, environ={"ARCHIVIST_PUBLISHER": "1"}, engine="v0.1.0")
+    message = str(caught.value)
+    assert "was pushed" in message and "NOT opened" in message
+    assert "Resource not accessible" in message  # GitHub's own answer is kept
+    assert "https://github.com/o/r/compare/main...chore/archivist-onboarding" in message
+    assert any(c[:2] == ["git", "push"] and "chore/archivist-onboarding" in c for c in runner.calls)
+
+
+def test_a_pull_request_that_appeared_meanwhile_is_returned_not_an_error(tmp_path: Path) -> None:
+    from archivist.workspace import prepare_target
+
+    runner = PrRefusingRunner(existing="https://github.com/o/r/pull/9")
+    result = prepare_target(target_slug="kb", workspace=tmp_path / "kb", registry_path=_kb_registry(tmp_path),
+                            runner=runner, environ={"ARCHIVIST_PUBLISHER": "1"}, engine="v0.1.0")
+    assert result.pull_request_url == "https://github.com/o/r/pull/9"
+
+
 def test_scaffold_migrates_the_references_layout(tmp_path: Path) -> None:
     """A target scaffolded with references/ moves to sources/, citations follow, pin moves."""
     workspace = tmp_path / "acme"

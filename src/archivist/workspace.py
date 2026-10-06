@@ -586,6 +586,34 @@ def _prepare_base_branch(workspace: Path, runner: CommandRunner) -> None:
     _run(runner, ["git", "push", "-u", "origin", _BASE_BRANCH], cwd=workspace)
 
 
+def _open_pull_request(target: Target, runner: CommandRunner, *, branch: str, title: str, body: str) -> str:
+    """Open the PR for an engine-owned branch that is already pushed; return its URL.
+
+    This is the last step after the push, so a failure here leaves a branch with no PR. It is
+    never swallowed and never an opaque ``gh`` error: an already-open PR is returned (a raced run,
+    or a response with no readable URL), and anything else says the branch is pushed, what GitHub
+    answered, and where to open the PR by hand. Re-running is safe: the branch is force-pushed.
+    """
+    created = _gh_api(runner, f"repos/{target.github_slug}/pulls", f"title={title}", f"head={branch}",
+                      f"base={_BASE_BRANCH}", f"body={body}", method="POST", jq=".html_url",
+                      allow_failure=True)
+    url = created.stdout.strip() if created.returncode == 0 else ""
+    if url:
+        return url
+    owner = target.github_slug.split("/")[0]
+    existing = _gh_api(runner, f"repos/{target.github_slug}/pulls?head={owner}:{branch}&state=open",
+                       jq=".[0].html_url // empty", allow_failure=True).stdout.strip()
+    if existing:
+        return existing
+    detail = (created.stderr or created.stdout or "GitHub returned no pull request URL").strip()
+    compare = f"{target.target_repo.removesuffix('.git')}/compare/{_BASE_BRANCH}...{branch}?expand=1"
+    raise WorkspaceError(
+        f"branch {branch} was pushed to {target.github_slug} but its pull request was NOT opened: {detail}\n"
+        f"Open it by hand at {compare}, or fix the cause (the token needs Pull requests: write on the "
+        "target) and re-run; the push is repeatable."
+    )
+
+
 def _publish_scaffold(
     workspace: Path,
     target: Target,
@@ -627,20 +655,14 @@ def _publish_scaffold(
     sha = _run(runner, ["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
     if open_pr:
         return sha, open_pr, True
-    created = _gh_api(
-        runner,
-        f"repos/{target.github_slug}/pulls",
-        f"title=Onboarding: scaffold {target.name}",
-        f"head={ONBOARDING_BRANCH}",
-        f"base={_BASE_BRANCH}",
-        (
-            "body=Seeds the OKF bundle (knowledge/, inbox, processed archive, root navigation) "
+    pr_url = _open_pull_request(
+        target, runner, branch=ONBOARDING_BRANCH, title=f"Onboarding: scaffold {target.name}",
+        body=(
+            "Seeds the OKF bundle (knowledge/, inbox, processed archive, root navigation) "
             "and a minimal contracts/target.yaml for the target to fill in."
         ),
-        method="POST",
-        jq=".html_url",
     )
-    return sha, created.stdout.strip(), True
+    return sha, pr_url, True
 
 
 def prepare_target(
@@ -854,8 +876,6 @@ def upgrade_target(
         f"archivist run-conductor <checkout> --engine {pin} --skip-publish",
         "```",
     ])
-    created = _gh_api(command_runner, f"repos/{target.github_slug}/pulls",
-                      f"title=Upgrade engine to {pin}", f"head={branch}", f"base={_BASE_BRANCH}",
-                      f"body={body}", method="POST", jq=".html_url")
+    pr_url = _open_pull_request(target, command_runner, branch=branch, title=f"Upgrade engine to {pin}", body=body)
     return UpgradeResult(target, workspace, "published", previous, pin, tuple(written),
-                         validation.stdout, sha, created.stdout.strip(), settings)
+                         validation.stdout, sha, pr_url, settings)
