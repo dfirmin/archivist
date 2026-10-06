@@ -45,12 +45,21 @@ need source detail.
 ├── knowledge/        # Authored OKF concepts (paths are concept IDs; layout set by contracts)
 ├── contracts/        # This target's specification for archivist (human PRs only)
 ├── quarantine/       # Drafts archivist could not place, waiting for an owner; see quarantine/README.md
-├── .github/          # Publishing workflows (Databricks, Confluence, SharePoint); see .github/archivist/SECRETS.md
+├── .github/          # Inbox drops, CODEOWNERS and publishing workflows; see .github/archivist/SECRETS.md
 └── sources/          # Source documents: inbox/ (waiting), processed/ (cited), quarantine/ (held)
-    ├── inbox/        # Incoming inputs awaiting processing
+    ├── inbox/        # Incoming inputs awaiting processing (drop by pull request; no review needed)
     ├── processed/    # Consumed inputs retained for citation
     └── quarantine/   # Inputs behind a quarantined draft
 ```
+
+## Adding a document
+
+Open `sources/inbox/` on GitHub, **Add file > Upload files**, and choose **Create a new branch and
+start a pull request**. A pull request that only adds documents to the inbox is checked and merged
+by `.github/workflows/inbox.yml` without a review; the next archivist run authors it, and that
+run's pull request is what a code owner reviews. Everything else (contracts, knowledge, workflows)
+needs a code owner's review, as `.github/CODEOWNERS` says. Accepted file types and the size limit
+are the repository variables `ARCHIVIST_INBOX_EXTENSIONS` and `ARCHIVIST_INBOX_MAX_KB`.
 
 ## Concept documents
 

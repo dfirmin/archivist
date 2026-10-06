@@ -1,0 +1,50 @@
+# Inbox drops: a pull request that only adds documents to sources/inbox/ is merged without a
+# review (ADR 0007). Everything else waits for a code owner, as .github/CODEOWNERS says.
+#
+# Drop a document: on GitHub, open sources/inbox/, Add file > Upload files, and choose
+# "Create a new branch and start a pull request". This workflow checks it and merges it; the
+# next engine run authors it. The engine's own output still arrives as a pull request a person
+# reviews and merges.
+#
+# Settings (repository variables, optional):
+#   ARCHIVIST_INBOX_EXTENSIONS  accepted file types, comma-separated (default: .md,.txt)
+#   ARCHIVIST_INBOX_MAX_KB      largest accepted file in KB (default: 1024)
+#
+# pull_request_target runs this file and .github/archivist/inbox.py as they are on the default
+# branch, never the pull request's copy, and nothing from the pull request is checked out or
+# run: a pull request cannot change the rules it is judged by.
+#
+# Seeded by `archivist prepare-target` when missing. After that this file is yours: the engine
+# never overwrites it, so edit the runner line below for your network.
+name: inbox
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write        # merge the drop and delete its branch
+  pull-requests: write
+
+concurrency:
+  group: inbox-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  inbox:
+    if: github.event.pull_request.base.ref == github.event.repository.default_branch
+    # RUNNER (stub): GitHub-hosted by default; the job needs python3 and the GitHub API.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/archivist
+          persist-credentials: false
+
+      - name: Merge the pull request if it is an inbox drop
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ARCHIVIST_INBOX_EXTENSIONS: ${{ vars.ARCHIVIST_INBOX_EXTENSIONS }}
+          ARCHIVIST_INBOX_MAX_KB: ${{ vars.ARCHIVIST_INBOX_MAX_KB }}
+        run: python3 .github/archivist/inbox.py

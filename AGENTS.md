@@ -59,7 +59,8 @@ schemas/contracts/  JSON Schema per built-in contract kind
 src/archivist/   Python: contracts, profile, engine, run plan, runner, record-gap, CLI
 bundle-template/ what prepare-target seeds: OKF root files, a pinned contracts/target.yaml and
                  generic starter contracts (the engine's examples/ are copied in as reference)
-                 and the publishing workflows in .github/ (seeded once, then the target's; ADR 0003)
+                 and the publishing workflows in .github/ (seeded once, then the target's; ADR 0003),
+                 plus CODEOWNERS and the inbox-drop workflow (ADR 0007)
 examples/        example targets: warehouse (full business-view setup), minimal (author + verify)
 tests/           offline pytest for the deterministic code
 docs/            guides: contracts, testing, releasing, authoring agents and skills
@@ -123,7 +124,8 @@ The short version:
 - **Offline tests** cover the deterministic code, and only that: auth resolution, contract
   loading and cross-checks, profile and roster resolution, the run plan, engine pinning and
   versions, scaffold and upgrade, `record-gap` and `prune-gaps` (locking, YAML),
-  `check-concept`, the dispatch check, concept/kind scope and the write fence. One test per guardrail behaviour; no tests that restate a prompt, count lines in a
+  `check-concept`, the dispatch check, concept/kind scope and the write fence, and the
+  scaffold's inbox-drop check and repo ruleset (ADR 0007). One test per guardrail behaviour; no tests that restate a prompt, count lines in a
   skill, or mock an agent's judgement. When you add a guardrail, add the test that shows it
   refusing bad input. `examples/` targets double as fixtures: keep them valid.
 - **Live tests** run on a test target (never a team's real repo) with a mix of messy and

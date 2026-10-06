@@ -25,6 +25,7 @@ from archivist.engines import (
     scaffold_pin,
 )
 from archivist.errors import WorkspaceError
+from archivist.repo_settings import SettingResult, apply_repo_settings, default_owner
 from archivist.targets import Target, resolve_target
 
 ONBOARDING_BRANCH = "chore/archivist-onboarding"
@@ -96,6 +97,21 @@ _PUBLISHING_FILES = (
 # The quarantine README tells owners what the directory holds and how to resolve it (ADR 0005).
 _LAYOUT_FILES = ("quarantine/README.md",)
 
+# What the repo needs to run as a target (ADR 0007): inbox drops merge without review, everything
+# else waits for a code owner. Seeded when missing, on scaffold and on upgrade, never overwritten.
+# The `archivist` ruleset that makes CODEOWNERS binding is a repo setting (repo_settings.py).
+_REPO_FILES = (
+    ".github/CODEOWNERS",
+    ".github/workflows/inbox.yml",
+    ".github/archivist/inbox.py",
+)
+_NO_OWNERS = ("# * @your-org/your-team    <- set the owners; until then no change needs a code "
+              "owner's review")
+
+
+def _owners_line(owners: tuple[str, ...]) -> str:
+    return f"* {' '.join(owners)}" if owners else _NO_OWNERS
+
 
 class ScaffoldState(str, Enum):
     EMPTY = "empty"
@@ -118,6 +134,7 @@ class PrepareResult:
     scaffold: ScaffoldResult
     commit_sha: str | None = None
     pull_request_url: str | None = None
+    settings: tuple[SettingResult, ...] = ()
 
 
 class CommandRunner(Protocol):
@@ -199,6 +216,7 @@ def scaffold_workspace(
     *,
     template_root: Path | None = None,
     engine: str | None = None,
+    owners: tuple[str, ...] = (),
 ) -> ScaffoldResult:
     """Seed an empty workspace without overwriting existing content."""
     state = detect_scaffold_state(workspace, target)
@@ -246,7 +264,8 @@ def scaffold_workspace(
         text = source.read_text(encoding="utf-8")
         if "{{engine}}" in text:
             text = text.replace("{{engine}}", pin())
-        return text.replace("{{slug}}", target.slug).replace("{{name}}", target.name)
+        return (text.replace("{{slug}}", target.slug).replace("{{name}}", target.name)
+                .replace("{{owners_line}}", _owners_line(owners or target.owners)))
 
     def write(relative: str, text: str, *, replace: bool = False) -> None:
         destination = workspace / relative
@@ -266,7 +285,7 @@ def scaffold_workspace(
         if relative == _INDEX:
             continue
         write(relative, render(relative))
-    for relative in (*_PUBLISHING_FILES, *_LAYOUT_FILES):
+    for relative in (*_PUBLISHING_FILES, *_LAYOUT_FILES, *_REPO_FILES):
         write(relative, render(relative))
     if seed_starters:
         for relative in _STARTER_FILES:
@@ -657,15 +676,21 @@ def prepare_target(
         raise WorkspaceError(
             "target repo is non-empty but does not have the expected archivist scaffold"
         )
-    scaffold = scaffold_workspace(workspace, target, engine=engine)
-    if not publish or not scaffold.written:
+    owners = target.owners or tuple(filter(None, [default_owner(command_runner)]))
+    scaffold = scaffold_workspace(workspace, target, engine=engine, owners=owners)
+    if not publish:
         return PrepareResult(target, workspace, action, scaffold, pull_request_url=open_pr)
+    # The repo settings follow the scaffold whether or not files changed: they may have been
+    # changed by hand, or the target may predate them (ADR 0007).
+    settings = apply_repo_settings(target, command_runner)
+    if not scaffold.written:
+        return PrepareResult(target, workspace, action, scaffold, pull_request_url=open_pr, settings=settings)
 
     sha, pr_url, changed = _publish_scaffold(workspace, target, command_runner, open_pr=open_pr)
     if open_pr:
         return PrepareResult(target, workspace, "onboarding-pr-updated" if changed else "onboarding-pr-open",
-                             scaffold, sha, pr_url)
-    return PrepareResult(target, workspace, "published", scaffold, sha, pr_url)
+                             scaffold, sha, pr_url, settings)
+    return PrepareResult(target, workspace, "published", scaffold, sha, pr_url, settings)
 
 
 UPGRADE_BRANCH = "archivist/upgrade-engine-{pin}"
@@ -682,6 +707,7 @@ class UpgradeResult:
     validation: str = ""
     commit_sha: str | None = None
     pull_request_url: str | None = None
+    settings: tuple[SettingResult, ...] = ()
 
 
 def _engine_source(pin: str, environ: dict[str, str] | None) -> tuple[Path, list[str], list[str]]:
@@ -766,11 +792,15 @@ def upgrade_target(
     _refresh_examples(workspace, source, readme, written, skipped)
     if target.mirrors:  # a mirror follows the example of the engine it moves to
         _mirror_example(workspace, source, target, pin, written, skipped)
-    for relative in _LAYOUT_FILES:
+    owners = target.owners
+    if not owners and not local:
+        owners = tuple(filter(None, [default_owner(command_runner)]))
+    for relative in (*_LAYOUT_FILES, *_REPO_FILES):
         template, destination = source / "bundle-template" / relative, workspace / relative
         if template.is_file() and not destination.exists():
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+            text = template.read_text(encoding="utf-8").replace("{{owners_line}}", _owners_line(owners))
+            destination.write_text(text, encoding="utf-8")
             written.append(relative)
 
     validation = _validate_with(command, flags, workspace, environ)
@@ -795,21 +825,23 @@ def upgrade_target(
     ):
         _run(command_runner, args, cwd=workspace)
     sha = _run(command_runner, ["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
+    settings = apply_repo_settings(target, command_runner)
 
     owner = target.github_slug.split("/")[0]
     existing = _gh_api(command_runner, f"repos/{target.github_slug}/pulls?head={owner}:{branch}&state=open",
                        jq=".[0].html_url // empty", allow_failure=True).stdout.strip()
     if existing:
         return UpgradeResult(target, workspace, "pr-updated", previous, pin, tuple(written),
-                             validation.stdout, sha, existing)
+                             validation.stdout, sha, existing, settings)
     env = environ if environ is not None else os.environ
     repo = (env.get(ENGINE_REPO_ENV, "").strip() or DEFAULT_ENGINE_REPO).removesuffix(".git")
     body = "\n".join([
         f"Moves `{target.slug}` from engine `{previous}` to `{pin}`.",
         "",
         f"- What changed in the engine: {repo}/compare/{previous}...{pin}",
-        "- Changed here: the `engine:` line in `contracts/target.yaml` and the reference copies in "
-        "`examples/`. Contracts, sources and knowledge are untouched.",
+        "- Changed here: the `engine:` line in `contracts/target.yaml`, the reference copies in "
+        "`examples/` and any engine-seeded file the repo was missing. Contracts, sources and "
+        "knowledge are untouched.",
         f"- Validated by engine `{pin}`:",
         "",
         "```",
@@ -826,4 +858,4 @@ def upgrade_target(
                       f"title=Upgrade engine to {pin}", f"head={branch}", f"base={_BASE_BRANCH}",
                       f"body={body}", method="POST", jq=".html_url")
     return UpgradeResult(target, workspace, "published", previous, pin, tuple(written),
-                         validation.stdout, sha, created.stdout.strip())
+                         validation.stdout, sha, created.stdout.strip(), settings)

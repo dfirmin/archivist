@@ -1,0 +1,12 @@
+# Who reviews changes to this knowledge repo (ADR 0007).
+#
+# The engine's `archivist` ruleset requires a pull request into main and a code owner's review.
+# Every file is owned below except sources/inbox/: a pull request that only adds documents
+# there has no owner to review it, so .github/workflows/inbox.yml checks and merges it.
+#
+# Seeded by `archivist prepare-target` when missing; edit the owners to suit your team
+# (users or @org/team). GitHub reads this file from the default branch.
+{{owners_line}}
+
+# Inbox drops: no owner, no review.
+/sources/inbox/

@@ -89,7 +89,8 @@ every live test mixes:
 - at least one case with a conflict between sources, and one with information the sources lack
   (it should become a gap, not invented text).
 
-Put them in `sources/inbox/` on the target's `main` (by PR) before the run.
+Put them in `sources/inbox/` on the target's `main` before the run: a pull request that only adds
+inbox documents merges itself (ADR 0007).
 
 ## Testing unreleased code
 

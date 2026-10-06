@@ -369,7 +369,13 @@ default. Run `./scripts/docker-run.sh config-check` to see which endpoint a run 
 `INBOX_LIMIT`, `GROUP_LIMIT`, `CONCEPT_FILE`, `CONCEPTS`, `KINDS`, `CONCEPT_BATCH`,
 `SKIP_PUBLISH` and `RUN_BRANCH`.
 
-Targets are registered in [`targets.yaml`](targets.yaml).
+Targets are registered in [`targets.yaml`](targets.yaml). An optional `owners:` list
+(`@user` or `@org/team`) sets the target's code owners; without it, whoever scaffolds owns it.
+
+`prepare-target` also sets up the target repo on GitHub (ADR 0007): it seeds `CODEOWNERS` and an
+inbox workflow, so a pull request that only adds documents to `sources/inbox/` merges without a
+review, and applies an `archivist` ruleset on `main` (pull request plus code owner review). The
+ruleset needs admin on the target; without it the command prints a `TODO` line and carries on.
 
 ## Project structure
 

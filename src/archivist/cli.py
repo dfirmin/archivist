@@ -215,6 +215,8 @@ def _upgrade_target(args: argparse.Namespace) -> int:
         print(f"commit    {result.commit_sha}")
     if result.pull_request_url:
         print(f"PR        {result.pull_request_url}")
+    for setting in result.settings:
+        print(setting.line())
     print("PASS  target upgraded" if result.action != "up-to-date" else f"PASS  already on {result.pin}")
     return 0
 
@@ -244,6 +246,8 @@ def _prepare_target(args: argparse.Namespace) -> int:
         print(f"commit    {result.commit_sha}")
     if result.pull_request_url:
         print(f"PR        {result.pull_request_url}")
+    for setting in result.settings:
+        print(setting.line())
     print("PASS  target workspace ready")
     return 0
 
