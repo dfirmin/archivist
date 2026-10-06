@@ -222,3 +222,59 @@ def test_the_first_group_is_read_from_the_planner_reply() -> None:
     assert first_group_documents(monitor_with([("intake-planner", reply)]), "intake-planner") == [
         "sources/inbox/re-br-hom-022.md"]
     assert first_group_documents(monitor_with([("intake-planner", "Groups: 0")]), "intake-planner") == []
+
+
+MIRROR = Target("mirror", "Mirror KB", "d", "https://github.com/example-org/mirror", "test", "active", False,
+                mirrors="warehouse")
+EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "warehouse"
+
+
+def _tree(root: Path) -> dict[str, str]:
+    return {p.relative_to(root).as_posix(): p.read_text(encoding="utf-8") for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def test_a_mirrored_target_is_seeded_with_its_example(tmp_path: Path) -> None:
+    workspace = tmp_path / "mirror"
+    scaffold_workspace(workspace, MIRROR, engine="v0.1.0")
+    contracts, example = _tree(workspace / "contracts"), _tree(EXAMPLE / "contracts")
+    assert set(contracts) == set(example)  # no starter contracts left over
+    assert {k: v for k, v in contracts.items() if k != "target.yaml"} == {
+        k: v for k, v in example.items() if k != "target.yaml"}
+    index = contracts["target.yaml"]
+    assert "slug: mirror\n" in index and "name: Mirror KB\n" in index and "engine: v0.1.0\n" in index
+    assert _tree(workspace / "sources/inbox").keys() - {".gitkeep"} == _tree(EXAMPLE / "sources/inbox").keys()
+    assert resolve_run(workspace, engine=ENGINE).contracts.slug == "mirror"
+
+
+def test_an_upgrade_re_mirrors_contracts_and_inbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from archivist.workspace import upgrade_target
+
+    workspace = tmp_path / "mirror"
+    scaffold_workspace(workspace, MIRROR, engine="v0.1.0")
+    (workspace / "contracts/scoring.yaml").write_text("version: 1\n# drifted\n", encoding="utf-8")
+    (workspace / "contracts/reference/extra.yaml").write_text("x: 1\n", encoding="utf-8")
+    (workspace / "sources/inbox/stray.md").write_text("stray\n", encoding="utf-8")
+    (workspace / "knowledge/kept.md").write_text("kept\n", encoding="utf-8")
+    registry = tmp_path / "targets.yaml"
+    registry.write_text("targets:\n  - {slug: mirror, name: Mirror KB, description: d, mirrors: warehouse,"
+                        " target_repo: 'https://github.com/example-org/mirror', type: test, status: active}\n",
+                        encoding="utf-8")
+    monkeypatch.setattr("archivist.workspace.running_version", lambda: "v1.2.3")
+    result = upgrade_target(target_slug="mirror", workspace=workspace, pin="v1.2.3", registry_path=registry, local=True)
+    assert "PASS  contracts valid" in result.validation
+    assert (workspace / "contracts/scoring.yaml").read_text(encoding="utf-8") == (EXAMPLE / "contracts/scoring.yaml").read_text(encoding="utf-8")
+    assert not (workspace / "contracts/reference/extra.yaml").exists()
+    assert not (workspace / "sources/inbox/stray.md").exists()
+    assert (workspace / "knowledge/kept.md").read_text(encoding="utf-8") == "kept\n"
+    assert "engine: v1.2.3\n" in (workspace / "contracts/target.yaml").read_text(encoding="utf-8")
+
+
+def test_mirrors_must_name_an_example(tmp_path: Path) -> None:
+    from archivist.targets import TargetConfigError, load_targets
+
+    registry = tmp_path / "targets.yaml"
+    registry.write_text("targets:\n  - {slug: m, name: M, description: d, mirrors: nowhere,"
+                        " target_repo: 'https://github.com/example-org/m', type: test, status: active}\n",
+                        encoding="utf-8")
+    with pytest.raises(TargetConfigError, match="'mirrors' names 'nowhere', which is not in examples/"):
+        load_targets(registry)

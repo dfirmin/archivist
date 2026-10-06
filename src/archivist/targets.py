@@ -29,6 +29,9 @@ class Target:
     type: str
     status: str
     auto_trigger: bool
+    # A test target that mirrors one of the engine's examples/: its contracts and inbox are
+    # that example's, re-copied on onboarding and on every engine upgrade.
+    mirrors: str | None = None
 
     @property
     def active(self) -> bool:
@@ -77,6 +80,17 @@ def _validate_slug(slug: str, *, context: str) -> None:
         raise TargetConfigError(f"{context}: invalid slug {slug!r}")
 
 
+def _mirrors(raw: dict[str, Any], *, context: str) -> str | None:
+    value = raw.get("mirrors")
+    if value is None:
+        return None
+    if not isinstance(value, str) or not _SLUG.fullmatch(value.strip()):
+        raise TargetConfigError(f"{context}: 'mirrors' must name an example directory")
+    if not (project_root() / "examples" / value.strip() / "contracts").is_dir():
+        raise TargetConfigError(f"{context}: 'mirrors' names {value!r}, which is not in examples/")
+    return value.strip()
+
+
 def load_targets(registry_path: Path | None = None) -> tuple[Target, ...]:
     path = (registry_path or project_root() / "targets.yaml").resolve()
     data = _load_mapping(path)
@@ -104,6 +118,7 @@ def load_targets(registry_path: Path | None = None) -> tuple[Target, ...]:
             type=_required_text(raw, "type", context=context),
             status=_required_text(raw, "status", context=context),
             auto_trigger=bool(raw.get("auto_trigger", False)),
+            mirrors=_mirrors(raw, context=context),
         )
         if target.status not in {"active", "inactive"}:
             raise TargetConfigError(
