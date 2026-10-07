@@ -101,8 +101,9 @@ Apply each stage's `done_when` to its result. Then, when it does not hold:
 - `on_failure: fail-group` — record it; the group ends here and you go to the next group;
 - any other `on_failure` text — follow it as written.
 
-A quarantined draft, or a document the producing stage left in the inbox, is not a failure;
-record it with its reason.
+A quarantined draft is not a failure; record it with its reason. A document the producing stage
+left in the inbox is one: no document waits for another, so record it under Failures with the
+stage's reason.
 
 ## 3. Catalog the group
 

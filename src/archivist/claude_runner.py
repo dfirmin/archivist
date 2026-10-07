@@ -381,8 +381,8 @@ def build_kickoff(
     if held:
         listed = "\n".join(f"- `{d}`" for d in sorted(held))
         lines.append(
-            "Held: these inbox documents wait for a document not yet authored; an earlier session "
-            f"took none of them. Tell the planner to leave them out of the queue:\n{listed}"
+            "Held: an earlier session of this run planned these inbox documents and took none of "
+            f"them. Tell the planner to leave them out of the queue:\n{listed}"
         )
     if one_group:
         lines.append(
@@ -475,8 +475,8 @@ def run_conductor_agent(
     # ADR 0006 §5: a named document on a target that extracts is planned, and the extracts it
     # yields are followed in later sessions until every one has left the inbox.
     named: list[str] = [inbox_file] if inbox_file and roster.extracting else []
-    # Documents a session planned first and then took none of (an amendment awaiting its primary
-    # document): later sessions plan without them, so one waiting group never ends a scan.
+    # Documents a session planned first and then took none of (a stage that failed to place them):
+    # later sessions plan without them, so one stuck group never ends a scan or loops on it.
     held: set[str] = set()
 
     def kickoff_for(*, limit: int, continue_branch: bool, concepts: Sequence[str] = ()) -> str:

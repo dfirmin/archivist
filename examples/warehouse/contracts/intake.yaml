@@ -63,7 +63,7 @@ classes:
   - id: rule-amendment
     description: Changes an existing business rule (a new threshold, date or exception).
     concept_type: business-rule
-    mode: enrich-only          # waits for the rule it amends
+    mode: partial              # updates the rule; with none yet, starts it from what the amendment states
     sections: best-fit
   - id: meeting-transcript
     description: >-

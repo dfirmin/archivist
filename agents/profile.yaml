@@ -37,9 +37,8 @@ agents:
         {documents}
       done_when: >-
         Each document has left the inbox, for sources/processed/ behind a concept or for
-        sources/quarantine/ behind a quarantined draft; only a document awaiting its primary
-        document may stay. Record each concept path and each quarantined draft the author
-        reports. Quarantined drafts go to no later stage.
+        sources/quarantine/ behind a quarantined draft. Record each concept path and each
+        quarantined draft the author reports. Quarantined drafts go to no later stage.
       on_empty: >-
         The author returned without writing a concept or a quarantined draft while the
         documents are still in the inbox: retry once with description "author-{group}-retry"
