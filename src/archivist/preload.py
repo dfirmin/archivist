@@ -35,7 +35,11 @@ HEADER = """# Target contracts for this run (already read)
 These are this target's contract files for this run, verbatim. Treat them as already read: use
 them from here and do not open these paths again. Read anything not listed here (other
 contracts, reference data marked not loaded, the source documents, concepts) as usual.
-Contracts stay read-only."""
+Contracts stay read-only.
+
+Having the reference data in view changes nothing about how it is used: look a value up where
+a contract or your instructions call for a lookup, and use only that hit. Reference wording
+never becomes a title, a name or body text; those come from the sources."""
 
 
 def _kinds_for(agent: str, profile: Profile) -> tuple[str, ...]:
