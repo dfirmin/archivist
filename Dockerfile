@@ -24,8 +24,10 @@ ENV PYTHONUNBUFFERED=1 \
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
         ca-certificates \
+        fd-find \
         gh \
         git \
+        ripgrep \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=node-stage /usr/local/bin/node /usr/local/bin/node
