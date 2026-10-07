@@ -1,8 +1,9 @@
 # 0008 — A second harness: Pi, behind a harness interface
 
-Status: proposed, 2026-10-07. Implemented on `feat/pi-harness` and proven live for authoring,
-extraction, gap and score runs on both test targets (docs/live-proof/2026-10-07.md). Becomes
-accepted once publishing on Pi is proven live. The default harness stays `claude-code`.
+Status: proposed, 2026-10-07. Implemented on `feat/pi-harness` and proven live on both test
+targets: authoring, extraction, gap and score runs, and publishing (branch, PR, per-group commits,
+issues) (docs/live-proof/2026-10-07.md). `local-claude` mode is unproven. The default harness
+stays `claude-code`.
 
 ## Why
 
@@ -129,5 +130,5 @@ All three are harness plumbing; agents keep every judgement they had.
 
 docs/live-proof/2026-10-07.md. Proven: smoke, full inbox runs on both targets, extraction,
 placement and quarantine, gap and score runs, `anthropic-api` and `gateway-key` modes, failure
-detection. Outstanding: publishing on Pi (branch, PR, issues, re-run without duplicates) and
+detection, and publishing (PR #23 on the mirror; issues updated in place). Outstanding:
 `local-claude` mode.

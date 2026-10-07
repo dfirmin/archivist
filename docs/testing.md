@@ -191,6 +191,10 @@ your edits.
 6. **Record the proof** in `docs/live-proof/<YYYY-MM-DD>.md`: engine version or SHA, target,
    documents, concept paths, PR and issue links, what you checked, what failed and what changed.
 
+An inbox scan with `--parallel N` plans once and runs up to N groups' stages at once, then
+catalogs and publishes them in order (ADR 0009); check that the run prints one finishing
+session per round and one commit per group.
+
 Narrower runs: `--inbox-limit N` / `--group-limit N` cap an inbox scan. Runs on existing
 concepts (ADR 0004):
 
