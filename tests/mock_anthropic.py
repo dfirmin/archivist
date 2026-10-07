@@ -108,6 +108,7 @@ class MockAnthropic:
                         "system": _system_text(body),
                         "tools": [t.get("name") for t in body.get("tools", []) if isinstance(t, dict)],
                         "model": body.get("model"),
+                        "thinking": body.get("thinking"),
                         "child": is_child,
                     })
                     if is_child:

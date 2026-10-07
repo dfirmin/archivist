@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -69,6 +70,16 @@ ALL_TOOLS = ("read", "write", "edit", "bash", "grep", "find", "ls", "Skill")
 _FAMILY_LIMITS = (("haiku", 200_000, 64_000), ("sonnet", 1_000_000, 128_000),
                   ("opus", 1_000_000, 128_000), ("fable", 1_000_000, 128_000))
 _DEFAULT_LIMITS = (200_000, 64_000)
+# Thinking as Claude Code sends it (requests captured live, docs/live-proof/2026-10-07.md):
+# models with adaptive thinking get `adaptive` at Pi's default effort (medium, as Claude Code);
+# the rest (Haiku 4.5) get budgeted thinking of 31,999 tokens. Pi's default for budgeted models is
+# 8,192, and thinking off made the Haiku gap-agents miss present gaps (22-24 of 30 against 30).
+BUDGET_LEVEL = "high"
+BUDGET_TOKENS = 31_999
+# Models that take adaptive thinking (the model decides when to think, as on Claude Code). Pi's
+# catalog gives them a fixed thinking budget on every turn instead, which live made each Sonnet
+# sub-agent turn slower than on Claude Code; `compat.forceAdaptiveThinking` switches it.
+_ADAPTIVE = re.compile(r"claude-(sonnet|opus|fable|mythos)-(\d+)")
 
 
 def pi_dir(workspace: Path) -> Path:
@@ -103,6 +114,26 @@ def agent_prompt(agent: Agent, skills: dict[str, Skill]) -> str:
     return "\n\n".join(parts) + "\n"
 
 
+def pi_settings(models: Sequence[str]) -> dict:
+    """The run's Pi settings: quiet, and budgeted thinking where Claude Code budgets it."""
+    budgeted = {
+        f"{provider}/{model}": BUDGET_LEVEL
+        for model in dict.fromkeys(models)
+        if not adaptive_thinking(model)
+        for provider in (BUILTIN_PROVIDER, GATEWAY_PROVIDER)
+    }
+    settings: dict = {"quietStartup": True}
+    if budgeted:
+        settings["modelThinkingLevels"] = budgeted
+        settings["thinkingBudgets"] = {BUDGET_LEVEL: BUDGET_TOKENS}
+    return settings
+
+
+def adaptive_thinking(model: str) -> bool:
+    match = _ADAPTIVE.search(model.lower())
+    return bool(match) and int(match.group(2)) >= 5
+
+
 def model_limits(model: str) -> tuple[int, int]:
     lowered = model.lower()
     for family, context, output in _FAMILY_LIMITS:
@@ -134,7 +165,7 @@ def _key_helper(env: dict[str, str]) -> str:
 @dataclass(frozen=True)
 class PiProvider:
     name: str
-    models_json: dict | None  # None: Pi's built-in provider, nothing to write
+    models_json: dict | None  # None: nothing to write
     env: dict[str, str]
 
 
@@ -149,7 +180,13 @@ def provider_for(auth: AuthConfig, env: dict[str, str], models: Sequence[str]) -
             and env.get("CLAUDE_CODE_OAUTH_TOKEN")
         ):
             extra["ANTHROPIC_OAUTH_TOKEN"] = env["CLAUDE_CODE_OAUTH_TOKEN"]
-        return PiProvider(BUILTIN_PROVIDER, None, extra)
+        overrides = {
+            model: {"compat": {"forceAdaptiveThinking": True}}
+            for model in dict.fromkeys(m for m in models if m)
+            if adaptive_thinking(model)
+        }
+        models_json = {"providers": {BUILTIN_PROVIDER: {"modelOverrides": overrides}}} if overrides else None
+        return PiProvider(BUILTIN_PROVIDER, models_json, extra)
 
     if auth.mode == GATEWAY_KEY_AUTH:
         base_url = auth.endpoint
@@ -173,10 +210,11 @@ def provider_for(auth: AuthConfig, env: dict[str, str], models: Sequence[str]) -
         provider["headers"] = {"anthropic-beta": ""}  # an empty list: Pi sends no beta features
     for model in dict.fromkeys(m for m in models if m):
         context, output = model_limits(model)
-        provider["models"].append(
-            {"id": model, "name": model, "reasoning": True, "input": ["text", "image"],
-             "contextWindow": context, "maxTokens": output}
-        )
+        entry = {"id": model, "name": model, "reasoning": True, "input": ["text", "image"],
+                 "contextWindow": context, "maxTokens": output}
+        if adaptive_thinking(model):
+            entry["compat"] = {"forceAdaptiveThinking": True}
+        provider["models"].append(entry)
     return PiProvider(GATEWAY_PROVIDER, {"providers": {GATEWAY_PROVIDER: provider}}, {})
 
 
@@ -205,8 +243,6 @@ class PiHarness:
         if not extension.is_file():
             raise DefinitionError(f"missing Pi extension: {extension}")
         shutil.copy2(extension, root / "extensions" / extension.name)
-        (root / "settings.json").write_text(json.dumps({"quietStartup": True}, indent=2) + "\n", encoding="utf-8")
-
         models: list[str] = []
         for name in written:
             agent = engine.agents[name]
@@ -223,6 +259,7 @@ class PiHarness:
                 models.append(agent.model)
         self._roster = spawnable
         self._models = tuple(models)
+        (root / "settings.json").write_text(json.dumps(pi_settings(models), indent=2) + "\n", encoding="utf-8")
         return written
 
     # ----------------------------------------------------------------------- env

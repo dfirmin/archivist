@@ -8,6 +8,9 @@ RUN apt-get update \
 
 ARG CLAUDE_CODE_VERSION=2.1.159
 RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+# Pi, the second harness (ADR 0008; ARCHIVIST_HARNESS=pi). Pinned like Claude Code.
+ARG PI_VERSION=1.0.4
+RUN npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@${PI_VERSION}"
 
 FROM python:3.12-slim
 
@@ -28,6 +31,7 @@ RUN apt-get update \
 COPY --from=node-stage /usr/local/bin/node /usr/local/bin/node
 COPY --from=node-stage /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=node-stage /usr/local/bin/claude /usr/local/bin/claude
+COPY --from=node-stage /usr/local/bin/pi /usr/local/bin/pi
 RUN ln -s ../lib/node_modules/@anthropic-ai/claude-code/vendor /usr/local/bin/vendor
 
 WORKDIR /app
@@ -40,6 +44,7 @@ COPY examples ./examples
 COPY src ./src
 COPY agents ./agents
 COPY skills ./skills
+COPY harness ./harness
 COPY tests ./tests
 COPY scripts ./scripts
 COPY docker ./docker

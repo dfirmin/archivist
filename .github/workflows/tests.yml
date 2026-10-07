@@ -17,4 +17,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
+      # The Pi harness's plumbing tests run real pi processes against a scripted endpoint.
+      - run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.0.4
       - run: python -m pytest -q

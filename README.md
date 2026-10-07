@@ -357,11 +357,23 @@ silently reroute the run. Gateway mode strips pre-release beta headers, which ma
 reject. Each agent pins its own model in `agents/*.md`; `ACT_CLAUDE_MODEL` sets the session
 default. Run `./scripts/docker-run.sh config-check` to see which endpoint a run will use.
 
+### Harness
+
+Sessions run on Claude Code by default. `ARCHIVIST_HARNESS=pi` runs them on
+[Pi](https://pi.dev) instead (ADR 0008): the same agents, skills, contracts and run plan, with an
+engine extension providing sub-agents. All four auth modes work on both; on Pi a gateway or key
+helper becomes a provider in a generated `models.json`. `inherit` on Pi uses `ANTHROPIC_API_KEY`,
+`CLAUDE_CODE_OAUTH_TOKEN` or your own `~/.pi/agent/auth.json`; note that a Claude subscription
+login used through a third-party harness draws from extra usage, so prefer `anthropic-api` or a
+gateway for Pi.
+
 ### Other variables
 
 | Variable | Purpose |
 |---|---|
 | `ACT_CLAUDE_MODEL` | Default session model (optional in `anthropic-api` mode) |
+| `ARCHIVIST_HARNESS` | `claude-code` (default) or `pi` |
+| `ARCHIVIST_PI_BIN` | Pi harness only: the `pi` executable (default `pi` on `PATH`) |
 | `ANTHROPIC_BASE_URL` | Gateway mode only: a local proxy in front of the gateway |
 | `GITHUB_TOKEN` | Used by the conductor for publishing (or the mounted `gh` login) |
 

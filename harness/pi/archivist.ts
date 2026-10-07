@@ -9,6 +9,9 @@
  *   Skill     — return an engine skill's SKILL.md (the enricher and extractor load method skills).
  *   TodoWrite — accept the conductor's checklist; it is the conductor's own bookkeeping.
  *
+ * It also asks for thinking with `display: "omitted"`, as Claude Code does: the model thinks as
+ * much, but the thinking text is not streamed back, and nothing in the engine reads it.
+ *
  * Everything an agent needs is resolved by Python at install time (ADR 0008): the agent's
  * model, its Pi tool list and a prompt file with its preloaded skills appended, in
  * `<agent dir>/agents/<name>.json`. This file only reads that and spawns; it decides nothing.
@@ -98,6 +101,16 @@ function textOf(message: any): string {
 }
 
 export default function (pi: ExtensionAPI) {
+	pi.on("before_provider_request", (event) => {
+		const payload = event.payload as any;
+		const thinking = payload?.thinking;
+		if (thinking && (thinking.type === "enabled" || thinking.type === "adaptive")) {
+			payload.thinking = { ...thinking, display: "omitted" };
+			return payload;
+		}
+		return undefined;
+	});
+
 	pi.registerTool({
 		name: "Agent",
 		label: "Agent",

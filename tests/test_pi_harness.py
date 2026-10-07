@@ -76,8 +76,10 @@ def test_install_writes_specs_skills_and_extension(tmp_path: Path) -> None:
 
 def test_anthropic_api_uses_the_builtin_provider(tmp_path: Path) -> None:
     auth = _auth({"CLAUDE_AUTH_MODE": "anthropic-api", "ANTHROPIC_API_KEY": "k"})
-    provider = provider_for(auth, auth.apply({}), ("claude-sonnet-5-5",))
-    assert provider.name == "anthropic" and provider.models_json is None
+    provider = provider_for(auth, auth.apply({}), ("claude-sonnet-5-5", "claude-haiku-4-5-20251001"))
+    assert provider.name == "anthropic"
+    overrides = provider.models_json["providers"]["anthropic"]["modelOverrides"]
+    assert overrides == {"claude-sonnet-5-5": {"compat": {"forceAdaptiveThinking": True}}}
 
 
 def test_gateway_key_writes_a_provider_with_every_agent_model() -> None:
@@ -89,6 +91,8 @@ def test_gateway_key_writes_a_provider_with_every_agent_model() -> None:
     assert provider.name == GATEWAY_PROVIDER
     assert spec["baseUrl"] == "https://gw.example" and spec["apiKey"] == "$ANTHROPIC_API_KEY"
     assert [m["id"] for m in spec["models"]] == ["claude-sonnet-5-5", "claude-haiku-4-5-20251001"]
+    assert spec["models"][0]["compat"] == {"forceAdaptiveThinking": True}  # the model decides, as on Claude Code
+    assert "compat" not in spec["models"][1]
     assert spec["headers"] == {"anthropic-beta": ""}  # betas off by default, as for Claude Code
 
 
@@ -179,6 +183,10 @@ def test_pi_session_spawns_a_parallel_fleet_with_preloaded_skills(tmp_path: Path
     assert {r["model"] for r in children} == {"claude-haiku-4-5-20251001"}  # the agent's pin
     assert all("Agent" not in r["tools"] for r in children)
     assert all(r["headers"].get("x-api-key") == "mock" for r in mock.requests)
+    assert all(r["thinking"]["type"] == "enabled" and r["thinking"]["budget_tokens"] == 31_999
+               for r in children)  # Haiku: budgeted, as Claude Code sends it
+    assert all(r["thinking"]["display"] == "omitted" for r in mock.requests)  # as Claude Code asks
+    assert all(r["thinking"]["type"] == "adaptive" for r in mock.requests if not r["child"])  # Sonnet
     assert len([p for p in transcripts if "gap-agent" in p.name]) == 2
 
 
@@ -202,3 +210,11 @@ def test_agent_outside_the_roster_is_refused(tmp_path: Path) -> None:
         )
     assert not [r for r in mock.requests if r["child"]]  # nothing was spawned
     assert all("not in this run's roster" in r for r in monitor.results.values())
+
+
+def test_thinking_matches_claude_code(tmp_path: Path) -> None:
+    PiHarness().install(tmp_path, load_engine(), spawnable=())
+    settings = json.loads((tmp_path / ".claude" / "pi" / "settings.json").read_text())
+    assert settings["modelThinkingLevels"]["anthropic/claude-haiku-4-5-20251001"] == "high"
+    assert settings["thinkingBudgets"] == {"high": 31_999}  # Claude Code's Haiku sub-agent budget
+    assert not any("sonnet" in key for key in settings["modelThinkingLevels"])  # adaptive instead

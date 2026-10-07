@@ -17,6 +17,7 @@ from archivist.config import resolve_auth
 from archivist.engine import resolve_run
 from archivist.engines import enforce_pin, running_version
 from archivist.errors import ArchivistError
+from archivist.harness import harness_name
 from archivist.load_target import load_target
 from archivist.record_gap import prune_gaps, record_gap
 from archivist.requeue import requeue
@@ -31,9 +32,11 @@ def _fail(err: Exception) -> int:
 def _config_check(_args: argparse.Namespace) -> int:
     try:
         auth = resolve_auth()
+        harness = harness_name()
     except ArchivistError as err:
         return _fail(err)
     print(auth.describe())
+    print(f"harness   {harness}")
     print(f"model     {auth.model or 'Claude Code default (agents set their own)'}")
     print("PASS  configuration resolved")
     return 0
