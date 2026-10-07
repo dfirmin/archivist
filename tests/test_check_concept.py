@@ -19,6 +19,16 @@ okfx_team: platform
 ---
 
 ## When To Use
+
+*[Awaiting source material.]*
+
+## Prerequisites
+
+## Steps
+
+1. Deploy.
+
+## Verification
 """
 
 
@@ -126,3 +136,66 @@ def test_a_stub_for_a_document_without_a_concept_type_may_omit_type(draft: Path)
     draft.write_text(QUARANTINED.replace("type: Runbook\n", "").replace("status: quarantined", "status: draft"),
                      encoding="utf-8")
     assert "`type` is missing (OKF requires it)" in check_concept(draft).problems
+
+
+# ------------------------------------------------------------------ required headings (ADR 0010)
+
+
+def test_a_missing_required_heading_is_listed(concept: Path) -> None:
+    assert problems(concept, "## Verification\n", "") == [
+        "required heading `## Verification` is missing (structure routine-procedure): write it per "
+        "document-structure §3, as a stub `*[Awaiting source material.]*` when no source supports it"
+    ]
+
+
+def test_an_optional_section_may_be_absent_and_a_heading_must_match_its_level(concept: Path) -> None:
+    assert check_concept(concept).ok  # Rollback is `required: false`
+    assert "`## Steps` is missing" in problems(concept, "## Steps", "### Steps")[0]
+    assert "`## Steps` is missing" in problems(concept, "## Steps", "## Steps to follow")[0]
+
+
+def test_frontmatter_only_skips_the_body(concept: Path) -> None:
+    concept.write_text(GOOD.replace("## Verification\n", ""), encoding="utf-8")
+    assert check_concept(concept, frontmatter_only=True).ok
+
+
+def test_a_heading_inside_a_code_block_does_not_count(concept: Path) -> None:
+    assert problems(concept, "## Verification\n", "```\n## Verification\n```\n")
+
+
+VIEW = """---
+type: Business View Group Overview
+title: Claim Header
+okfx_structure: data-view-group
+okfx_subject_area: claims
+okfx_physical_views: [CLAIM_HDR_SV]
+okfx_product_owner: claims-data@example.com
+---
+
+{body}
+"""
+VIEW_HEADINGS = [
+    "Overview", "Source", "Data Sources & Ingestion Route", "Data Granularity",
+    "Business Rules & Usage Notes", "Other Key Concepts", "Attribute Information",
+    "Code Set Information", "Known Issues", "FAQ", "Glossary",
+]
+
+
+def _view(warehouse: Path, headings: list[str]) -> list[str]:
+    path = warehouse / "knowledge/subject-areas/claims/business-views/Claim Header/overview.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(VIEW.format(body="\n\n".join(f"## {h}" for h in headings)), encoding="utf-8")
+    return [p for p in check_concept(path).problems if "heading" in p]
+
+
+def test_a_required_parent_of_an_optional_enricher_subtree_is_the_authors(warehouse: Path) -> None:
+    # The live defect: Business Rules & Usage Notes was dropped because its only subsection
+    # (optional) holds an enricher section. It is required; the subtree under it is not.
+    assert _view(warehouse, VIEW_HEADINGS) == []
+    found = _view(warehouse, [h for h in VIEW_HEADINGS if h != "Business Rules & Usage Notes"])
+    assert len(found) == 1 and "`## Business Rules & Usage Notes`" in found[0]
+
+
+def test_placeholder_sections_are_required_and_enricher_sections_are_not(warehouse: Path) -> None:
+    assert "`## Glossary`" in _view(warehouse, [h for h in VIEW_HEADINGS if h != "Glossary"])[0]
+    assert not any("Code-Extracted Logic" in p or "Implementation Logic" in p for p in _view(warehouse, VIEW_HEADINGS))

@@ -10,6 +10,14 @@ It also holds the line ADR 0005 draws around quarantine: a quarantined draft liv
 ``quarantine/`` with ``status: quarantined`` and says why, and nothing quarantined is accepted
 under ``knowledge/``. A draft reaches ``knowledge/`` only by ``archivist requeue`` and a new
 authoring run, so the stages after the author are never skipped by moving a file.
+
+And it checks the body has every heading its structure requires (ADR 0010): live runs on both
+harnesses showed authors dropping a required heading in a third to two thirds of view overviews,
+where the structure says to stub it. Which headings must exist is the structure's, read as
+**document-structure** §3 states it: required author sections and placeholder sections, at their
+level; never an optional section or anything under it, never an enricher section or a heading
+whose only children are enricher sections. Whether a section has content is judgement and stays
+with the gap fleet (``missing_section``).
 """
 
 from __future__ import annotations
@@ -66,7 +74,53 @@ def _find_contracts(concept: Path) -> TargetContracts:
     raise ContractError(f"{INDEX_REL} not found above {concept}")
 
 
-def check_concept(path: Path) -> ConceptReport:
+def _required_headings(sections: Any, level: int = 2) -> list[tuple[int, str]]:
+    """``(level, heading)`` for every heading the author must write, in structure order."""
+    out: list[tuple[int, str]] = []
+    for section in sections or ():
+        if isinstance(section, str):
+            out.append((level, section))
+            continue
+        if not isinstance(section, dict) or section.get("required") is False:
+            continue
+        owner = section.get("owner", "author")
+        children = section.get("subsections") or []
+        enricher_only = bool(children) and all(
+            isinstance(c, dict) and c.get("owner") == "enricher" for c in children
+        )
+        if owner == "enricher" or enricher_only:
+            continue
+        out.append((level, str(section["heading"])))
+        out.extend(_required_headings(children, level + 1))
+    return out
+
+
+def _headings(body: str) -> set[tuple[int, str]]:
+    found: set[tuple[int, str]] = set()
+    fenced = False
+    for line in body.splitlines():
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        elif not fenced and line.startswith("#"):
+            marks = len(line) - len(line.lstrip("#"))
+            if marks and line[marks:marks + 1] == " ":
+                found.add((marks, line[marks:].strip().rstrip("#").strip()))
+    return found
+
+
+def _check_headings(text: str, structure: dict[str, Any], report: ConceptReport) -> None:
+    body = text.split(_DELIM, 2)[2] if text.count(_DELIM) >= 2 else ""
+    present = _headings(body)
+    for level, heading in _required_headings(structure.get("sections")):
+        if (level, heading) not in present:
+            report.problems.append(
+                f"required heading `{'#' * level} {heading}` is missing (structure "
+                f"{structure.get('id')}): write it per document-structure §3, as a stub "
+                "`*[Awaiting source material.]*` when no source supports it"
+            )
+
+
+def check_concept(path: Path, *, frontmatter_only: bool = False) -> ConceptReport:
     path = path.resolve()
     report = ConceptReport(path)
     if not path.is_file():
@@ -132,6 +186,10 @@ def check_concept(path: Path) -> ConceptReport:
             report.problems.append(f"`{name}` is neither an OKF field nor an okfx_ field")
 
     _check_sources(data, contracts, report)
+    if not quarantined and not frontmatter_only and spec.get("authored") and structure in allowed:
+        structure_doc = contracts.structures().get(str(structure))
+        if isinstance(structure_doc, dict):
+            _check_headings(path.read_text(encoding="utf-8"), structure_doc, report)
     return report
 
 

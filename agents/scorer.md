@@ -24,7 +24,8 @@ kind in the gap-kinds contract.
    `scale.precision` (default 2).
    Done when the number is inside the scale and each penalty maps to a listed gap.
 
-3. WRITE `okfx_confidence` on the concept, then run `archivist check-concept "<concept path>"`.
+3. WRITE `okfx_confidence` on the concept, then run
+   `archivist check-concept --frontmatter "<concept path>"` (the body is not yours to fix).
    Done when that field holds the number, nothing else changed, and check-concept passes.
 
 Report: `Score: <n>` and the band you used.
