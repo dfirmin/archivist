@@ -171,6 +171,10 @@ def _prune_gaps(args: argparse.Namespace) -> int:
         print(f"gap       {kind} removed (no longer in, enabled for, or applicable under the contract)")
     if result.created:
         print("gap       okfx_gaps added (empty)")
+    if result.fleet:
+        print(f"fleet     {', '.join(result.fleet)}")
+    else:
+        print(f"fleet     none (no enabled kind applies to {result.type_id} in this run)")
     print(f"PASS  okfx_gaps holds {result.gaps} entries")
     return 0
 
