@@ -4,7 +4,7 @@ The same surface as ``StreamMonitor`` (the run loop, the dispatch check and the 
 depend on nothing else), from Pi's events instead of Claude Code's:
 
 - ``session`` → session id;
-- the first ``message_end`` (role ``system``) lists the session's tools: when the run needs
+- the first ``message_end`` (role ``system``) lists the session's tools (``toolsAdded``): when the run needs
   sub-agents and ``Agent`` is not among them, the engine extension did not load and the
   session is aborted before it spends tokens (Claude Code's ``init`` check, for Pi);
 - ``tool_execution_start`` / ``_end`` of ``Agent`` → a dispatch and its result text; the
@@ -21,14 +21,12 @@ Sub-agents run as separate processes; the extension writes each one's events to
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from archivist.stream import SUBAGENT_TOOLS, Dispatch, StreamMonitor, _brief
 
-_TOOL_LINE = re.compile(r"^-\s*([A-Za-z_][\w-]*)\s*:", re.MULTILINE)
 _FAILED_STOPS = frozenset({"error", "aborted"})
 
 
@@ -51,10 +49,11 @@ def _result_text(result: Any) -> str:
 
 
 def _tools_from_system(message: dict[str, Any]) -> tuple[str, ...] | None:
-    sections = message.get("sections")
-    if isinstance(sections, dict) and isinstance(sections.get("tools"), str):
-        return tuple(_TOOL_LINE.findall(sections["tools"]))
-    return None
+    """The session's tools: Pi records them as ``toolsAdded`` on the first system message."""
+    added = message.get("toolsAdded")
+    if not isinstance(added, list):
+        return None
+    return tuple(t["name"] for t in added if isinstance(t, dict) and isinstance(t.get("name"), str))
 
 
 @dataclass(slots=True)

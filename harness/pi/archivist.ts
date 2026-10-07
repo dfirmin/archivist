@@ -17,6 +17,7 @@
  *   PI_CODING_AGENT_DIR        the run's private agent dir
  *   ARCHIVIST_PI_ROSTER        comma list of agents `Agent` may spawn (the run plan's roster)
  *   ARCHIVIST_PI_PROVIDER      provider for every spawn (anthropic | archivist-gateway)
+ *   ARCHIVIST_PI_DEFAULT_MODEL model for an agent without a pin
  *   ARCHIVIST_PI_EVENTS_DIR    where each sub-agent's JSONL events are written, one file per call
  */
 
@@ -31,7 +32,7 @@ const BRIEF_KEYS = ["command", "path", "file_path", "pattern", "skill", "subagen
 
 interface AgentSpec {
 	name: string;
-	model: string;
+	model: string | null;
 	tools: string[];
 	prompt_file: string;
 }
@@ -122,7 +123,7 @@ export default function (pi: ExtensionAPI) {
 			const args = [
 				"--mode", "json", "-p", "--no-session", "-nc",
 				"--provider", provider,
-				"--model", spec.model,
+				"--model", spec.model || process.env.ARCHIVIST_PI_DEFAULT_MODEL || "claude-sonnet-5-5",
 				"--tools", spec.tools.join(","),
 				"--append-system-prompt", spec.prompt_file,
 			];

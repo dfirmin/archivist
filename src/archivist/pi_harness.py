@@ -44,6 +44,9 @@ EXTENSION_SRC = Path("harness") / "pi" / "archivist.ts"
 PI_BIN_ENV = "ARCHIVIST_PI_BIN"
 GATEWAY_PROVIDER = "archivist-gateway"
 BUILTIN_PROVIDER = "anthropic"
+# Pi has no "harness default" model to fall back on as Claude Code does. An agent without a pin
+# (the smoke agent) and a run without ACT_CLAUDE_MODEL get the engine's main model.
+DEFAULT_MODEL = "claude-sonnet-5-5"
 
 # Claude Code tool names (as agents list them) → Pi's. `Glob` is Pi's `find`; `Agent`, `Skill`
 # and `TodoWrite` come from the engine extension.
@@ -167,7 +170,7 @@ def provider_for(auth: AuthConfig, env: dict[str, str], models: Sequence[str]) -
     }
     if env.get("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "") not in ("", "0"):
         # What CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS does for Claude Code: no anthropic-beta.
-        provider["headers"] = {"anthropic-beta": None}
+        provider["headers"] = {"anthropic-beta": ""}  # an empty list: Pi sends no beta features
     for model in dict.fromkeys(m for m in models if m):
         context, output = model_limits(model)
         provider["models"].append(
@@ -184,6 +187,7 @@ class PiHarness:
         self._roster: tuple[str, ...] = ()
         self._models: tuple[str, ...] = ()
         self._provider: str = BUILTIN_PROVIDER
+        self._default_model: str = DEFAULT_MODEL
 
     # -------------------------------------------------------------------- install
 
@@ -227,7 +231,7 @@ class PiHarness:
         root = pi_dir(workspace)
         if not root.is_dir():
             raise ConfigError(f"Pi agent dir missing: {root} (install the engine first)")
-        provider = provider_for(auth, env, (*self._models, auth.model or ""))
+        provider = provider_for(auth, env, (*self._models, auth.model or DEFAULT_MODEL))
         models_file = root / "models.json"
         if provider.models_json is not None:
             models_file.write_text(json.dumps(provider.models_json, indent=2) + "\n", encoding="utf-8")
@@ -238,6 +242,7 @@ class PiHarness:
             if operator_auth.is_file():
                 shutil.copy2(operator_auth, root / "auth.json")
         self._provider = provider.name
+        self._default_model = auth.model or DEFAULT_MODEL
         out = dict(env)
         out.update(provider.env)
         out.update(
@@ -247,6 +252,7 @@ class PiHarness:
                 "PI_SKIP_VERSION_CHECK": "1",
                 "ARCHIVIST_PI_ROSTER": ",".join(self._roster),
                 "ARCHIVIST_PI_PROVIDER": provider.name,
+                "ARCHIVIST_PI_DEFAULT_MODEL": self._default_model,
                 "ARCHIVIST_PI_EVENTS_DIR": str(root / "events"),
             }
         )
@@ -257,7 +263,7 @@ class PiHarness:
     def _base(self, model: str | None) -> list[str]:
         binary = os.environ.get(PI_BIN_ENV) or "pi"
         argv = [binary, "--mode", "json", "-p", "--no-session", "-nc", "--provider", self._provider]
-        return [*argv, *(["--model", model] if model else [])]
+        return [*argv, "--model", model or self._default_model]
 
     def argv(
         self,
@@ -288,4 +294,4 @@ class PiHarness:
     def smoke_argv(self, prompt: str, *, model: str | None, workspace: Path) -> list[str]:
         binary = os.environ.get(PI_BIN_ENV) or "pi"
         return [binary, "-p", "--no-session", "-nc", "--no-tools", "--provider", self._provider,
-                *(["--model", model] if model else []), prompt]
+                "--model", model or self._default_model, prompt]
