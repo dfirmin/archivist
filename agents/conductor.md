@@ -43,6 +43,9 @@ several groups. Your own edits are bookkeeping only: the catalog, and what a sta
 ## 1. Take the queue
 
 - **One inbox document:** the queue is one group holding it; its slug is the file stem.
+- **A planned group** (the kickoff gives its slug and documents): the planner already ran, so
+  do not spawn it. The queue is that one group. An `extract` group follows the extract rule
+  below.
 - **Only these inbox documents** (the kickoff lists them; on a target that extracts): spawn the
   plan's `planner`, description `plan-inbox`, prompt `Plan the queue: only these inbox
   documents:` followed by one `- <path>` line each. It replies as for an inbox scan.
@@ -68,6 +71,15 @@ open or reuse the pull request, and file an issue for each stub the extractor qu
 with the rest of the inbox. No stage and no other group runs in this session.
 
 When the kickoff says to publish, take the branch it names now (**knowledge-repo-git**).
+
+**Catalog and publish later.** When the kickoff says so, run §2 for the group, skip §3 and §4,
+and write the summary: a finishing session of this run catalogs and publishes the group. Leave
+git alone.
+
+**Finishing.** When the kickoff lists groups that earlier sessions of this run ran, with what
+each produced, spawn nothing. Take the branch when publishing, then for each group in the
+listed order run §3 and §4 with the concepts, drafts and documents listed for it, then write the
+summary.
 
 ## 2. Run the stages for the group
 
@@ -116,6 +128,7 @@ The run is done here, not before. Write it once every todo is closed:
 ```
 == Archivist run complete ==
 Pipeline: <name>     Groups: N     Concepts written: N
+Concepts: <each concept path written or updated, or none>
 Stages: <agent> N, <agent> N, …
 PR: <url or none>     Gap issues: N created, N updated     Quarantine issues: N
 Extracted: <document → n extracts, or none>

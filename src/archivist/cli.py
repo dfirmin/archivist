@@ -17,6 +17,7 @@ from archivist.config import resolve_auth
 from archivist.engine import resolve_run
 from archivist.engines import enforce_pin, running_version
 from archivist.errors import ArchivistError
+from archivist.harness import harness_name
 from archivist.load_target import load_target
 from archivist.record_gap import prune_gaps, record_gap
 from archivist.requeue import requeue
@@ -31,9 +32,11 @@ def _fail(err: Exception) -> int:
 def _config_check(_args: argparse.Namespace) -> int:
     try:
         auth = resolve_auth()
+        harness = harness_name()
     except ArchivistError as err:
         return _fail(err)
     print(auth.describe())
+    print(f"harness   {harness}")
     print(f"model     {auth.model or 'Claude Code default (agents set their own)'}")
     print("PASS  configuration resolved")
     return 0
@@ -188,6 +191,7 @@ def _run_conductor(args: argparse.Namespace) -> int:
         skip_publish=args.skip_publish,
         pipeline=args.pipeline,
         continue_branch=args.continue_branch,
+        parallel=args.parallel,
     )
 
 
@@ -327,6 +331,8 @@ def build_parser() -> argparse.ArgumentParser:
                            help="Concepts per conductor session (default 10)")
     conductor.add_argument("--pipeline", help="Pipeline to run (default: the target's, else the engine's)")
     conductor.add_argument("--skip-publish", action="store_true", help="No branch, commit, push, PR or issues")
+    conductor.add_argument("--parallel", type=int, default=1,
+                           help="Inbox scan: run up to N groups' stages at once (default 1, the serial loop; ADR 0009)")
     conductor.add_argument("--continue-branch", action="store_true",
                            help="Add to the branch (and PR) named by RUN_BRANCH that an earlier run pushed")
     conductor.add_argument("--engine", help=ENGINE_HELP)

@@ -34,6 +34,13 @@ archivist smoke-agent        # live: claude -p answers and can spawn a sub-agent
 
 A change to the runner or auth is proven live in both `anthropic-api` and `gateway-key` mode.
 
+Sessions run on Claude Code unless `ARCHIVIST_HARNESS=pi` (ADR 0008). A change to an agent, a
+skill, the runner or the extension in `harness/pi/` is proven on the harness it touches; one that
+could behave differently per harness (thinking, tools, spawning) on both. To compare harnesses,
+run them side by side on fresh copies of one target and diff the outputs and the `[timing]` and
+`[result]` lines; to compare what each sends the API, point `ANTHROPIC_BASE_URL` (Claude Code) or
+`LITELLM_API_BASE` (Pi, `gateway-key`) at a logging proxy (docs/live-proof/2026-10-07.md).
+
 ## Offline tests
 
 ```bash
@@ -183,6 +190,10 @@ your edits.
 
 6. **Record the proof** in `docs/live-proof/<YYYY-MM-DD>.md`: engine version or SHA, target,
    documents, concept paths, PR and issue links, what you checked, what failed and what changed.
+
+An inbox scan with `--parallel N` plans once and runs up to N groups' stages at once, then
+catalogs and publishes them in order (ADR 0009); check that the run prints one finishing
+session per round and one commit per group.
 
 Narrower runs: `--inbox-limit N` / `--group-limit N` cap an inbox scan. Runs on existing
 concepts (ADR 0004):

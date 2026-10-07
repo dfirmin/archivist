@@ -71,6 +71,22 @@ def _result_text(content: Any) -> str:
     return ""
 
 
+def _token_detail(model_usage: Any) -> str:
+    """Token totals across every model the session used (sub-agents included)."""
+    if not isinstance(model_usage, dict) or not model_usage:
+        return ""
+    keys = (("inputTokens", "in"), ("outputTokens", "out"),
+            ("cacheReadInputTokens", "cache_read"), ("cacheCreationInputTokens", "cache_write"))
+    totals = dict.fromkeys((label for _, label in keys), 0)
+    for usage in model_usage.values():
+        if isinstance(usage, dict):
+            for key, label in keys:
+                value = usage.get(key)
+                if isinstance(value, (int, float)):
+                    totals[label] += int(value)
+    return " tokens " + " ".join(f"{label}={value}" for label, value in totals.items())
+
+
 @dataclass(slots=True)
 class Dispatch:
     tool_use_id: str
@@ -238,5 +254,6 @@ class StreamMonitor:
         detail = f"turns={turns}" if turns is not None else ""
         if isinstance(cost, (int, float)):
             detail += f" cost=${cost:.4f}"
+        detail += _token_detail(event.get("modelUsage"))
         state = "error" if self.is_error else "ok"
         self._say(f"[result] {state} {self.result_subtype or ''} {detail}".rstrip(), err=self.is_error)
