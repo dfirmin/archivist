@@ -15,7 +15,7 @@ extractor. It is the "everything in one target" example.
 | Structure chosen by looking something up | `subject-area-overview` → `structure_rule` (archetype in `owners.yaml`) |
 | Structure chosen by content | `metric-definition` → ratio-metric or count-metric |
 | Partial documents fill only their sections | `intake.yaml` → classes with `mode: partial` |
-| Amendments wait for their rule | `intake.yaml` → `rule-amendment` (`mode: enrich-only`) |
+| An amendment updates its rule, or starts it when the rule is not documented yet | `intake.yaml` → `rule-amendment` (`mode: partial`) |
 | A required value never inferred | `business-rule` → `okfx_line_of_business` |
 | Meeting transcripts split into topic extracts | `intake.yaml` → `meeting-transcript` (`mode: extract`) |
 | Code-extracted logic (enrichment) | `structures/data-view-group.yaml` → `Code-Extracted Logic` |
@@ -47,7 +47,7 @@ Transcripts are extracted in the first session; their extracts join the groups b
 | `fw-legacy-feed-question.md` | messy email | **quarantined** stub: unresolved subject area for LEGACY_FEED |
 | `metric-policy-churn-rate.md` | draft | **quarantined** stub: no metrics row for Policy Churn Rate |
 | `br-clm-031-salvage-notes.md` | working notes | **quarantined** draft: no line of business stated (`okfx_line_of_business` missing) |
-| `re-br-hom-022-roof-age.md` | amendment | **left in the inbox**: awaiting BR-HOM-022 (home) |
+| `re-br-hom-022-roof-age.md` | amendment | **quarantined** draft: no subject area for BR-HOM-022 (the email names only homeowners, not an owners slug); `needs` records the new cutoff (15 years from 2027-03-01) |
 | `2026-10-01-claims-team-sync.md` | transcript, small talk only | **quarantined** stub: no topic the extract rule keeps |
 | each transcript | transcript | moved to `sources/processed/`; every quoted line found verbatim in it; small talk dropped |
 
@@ -55,6 +55,10 @@ The enricher's `code-logic` method needs the code repos in `inventory.csv`, whic
 fictional; use the `no-code` pipeline unless you point them at real repos.
 
 ## Last tested
+
+2026-10-07, engine `fix/no-waiting-for-primary` (`--engine current`, `--parallel 3`, pipeline
+`no-code`), on both harnesses: every document ended as the table says; none left in the inbox
+(ADR 0011). 8 authored concepts with their companions, 6 quarantined.
 
 2026-10-06, published on the mirror `dfirmin/archivist-knowledge-example` (pinned engine
 `ceca444`, pipeline `no-code`): every document ended as the table says, one commit per group,

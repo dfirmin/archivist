@@ -24,7 +24,7 @@ document should become and when the example was last tested live.
 | Give agents your own reference data with lookup rules | `handbook/contracts/reference/teams.yaml`, `warehouse/contracts/reference/` + `reference:` in each `target.yaml` |
 | Fill a section from source code (an enrichment method) | `warehouse/contracts/structures/data-view-group.yaml` → `Code-Extracted Logic` |
 | Fill only some sections from a partial document | `warehouse/contracts/intake.yaml` → classes with `mode: partial` |
-| Hold a document until its main document exists | `handbook/contracts/intake.yaml` → `policy-amendment`, `warehouse/…` → `rule-amendment` (`mode: enrich-only`) |
+| Let an amendment update its main concept, or start it when that is not documented yet | `handbook/contracts/intake.yaml` → `policy-amendment`, `warehouse/…` → `rule-amendment` (`mode: partial`) |
 | Update the existing document instead of creating a duplicate | `identity` on each type in `warehouse/contracts/concept-types.yaml` (a list field, a reference code, a composite) and `handbook/` (title with matching guidance) |
 | Hold back what cannot be placed (quarantine) | `scope` in `warehouse/contracts/intake.yaml` and `handbook/contracts/intake.yaml`; the expected outcomes in each example's `README.md` |
 | Split meeting transcripts into topic extracts | `warehouse/contracts/intake.yaml` → `meeting-transcript`, `handbook/…` → `incident-review-call` (`mode: extract`) |
