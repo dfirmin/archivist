@@ -132,7 +132,7 @@ def _check_concept(args: argparse.Namespace) -> int:
     failed = 0
     for raw in args.concept:
         try:
-            report = check_concept(Path(raw))
+            report = check_concept(Path(raw), frontmatter_only=args.frontmatter)
         except ArchivistError as err:
             return _fail(err)
         if report.ok:
@@ -338,8 +338,10 @@ def build_parser() -> argparse.ArgumentParser:
     conductor.add_argument("--engine", help=ENGINE_HELP)
     conductor.set_defaults(func=_run_conductor)
 
-    check = commands.add_parser("check-concept", help="Check a concept's frontmatter against the contracts")
+    check = commands.add_parser("check-concept", help="Check a concept's frontmatter and required headings against the contracts")
     check.add_argument("concept", nargs="+", help="Path(s) to concept .md files")
+    check.add_argument("--frontmatter", action="store_true",
+                       help="Frontmatter only: skip the required-headings check (stages that may change only frontmatter)")
     check.set_defaults(func=_check_concept)
 
     back = commands.add_parser(

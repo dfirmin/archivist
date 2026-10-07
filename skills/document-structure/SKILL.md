@@ -72,8 +72,11 @@ string is a section with defaults: `owner: author`, `required: true`.
 | `placeholder` | the heading plus its `placeholder` text, verbatim | leave as it is |
 | `enricher` | nothing: the enricher writes it, with any parent heading it needs | leave as it is |
 
-A heading whose only children are enricher sections is written by the enricher too, so a concept
-the enricher could not enrich has no empty headings.
+A heading whose every direct subsection is an enricher section is written by the enricher too,
+so a concept the enricher could not enrich has no empty headings. Only direct subsections count:
+a required section whose subsection is optional (`required: false`) is yours, even when that
+optional subsection holds enricher sections. Write its heading, and stub it when no source
+supports it. `archivist check-concept` lists any required heading that is missing.
 
 Class routing: `sections: all` → every author section; a list → those headings; `best-fit`
 → the sections the document's content supports. PARTIAL CREATE writes every heading but

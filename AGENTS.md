@@ -22,7 +22,8 @@ engine runs many targets without engine changes.
    reliable, and record the failure and the decision in `docs/adr/`. Today there are
    these: contract validation, engine pinning, the entry-stage dispatch check, `record-gap`
    and `prune-gaps` (YAML serialization under a lock), `check-concept` (frontmatter checked
-   after an agent writes it, including that nothing quarantined sits in `knowledge/`), scope
+   after an agent writes it, including that nothing quarantined sits in `knowledge/`, and the
+   headings the structure requires, ADR 0010), scope
    resolution for runs on existing concepts and the write fence on runs whose stages only set
    frontmatter (ADR 0004), and `requeue` (a quarantined draft's documents back to the inbox,
    ADR 0005).
