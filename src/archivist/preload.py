@@ -47,9 +47,7 @@ def _kinds_for(agent: str, profile: Profile) -> tuple[str, ...]:
     spec = profile.agents.get(agent)
     if spec is not None:
         return (*spec.requires, *spec.optional)
-    if agent == profile.coordinator:
-        # The gap fleet's `before` rule has the conductor read these two to size the fleet.
-        return ("gap-kinds", "concept-types")
+    # The coordinator reads no contract: `prune-gaps` prints each concept's fleet (ADR 0012).
     return ()
 
 

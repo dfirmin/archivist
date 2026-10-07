@@ -232,6 +232,23 @@ class PruneResult:
     removed: tuple[str, ...]
     gaps: int
     created: bool
+    fleet: tuple[str, ...] = ()  # the kinds to judge on this concept, in contract order (ADR 0012)
+    type_id: str = ""
+
+
+def _scope_kinds(workspace: Path) -> set[str] | None:
+    """The run plan's `scope.kinds` when it is a list (a `--kind` run), else None."""
+    from archivist.run_plan import PLAN_REL
+
+    plan = workspace / PLAN_REL
+    if not plan.is_file():
+        return None
+    try:
+        data = yaml.safe_load(plan.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError:
+        return None
+    kinds = (data.get("scope") or {}).get("kinds")
+    return {str(k) for k in kinds} if isinstance(kinds, list) else None
 
 
 def prune_gaps(concept: Path) -> PruneResult:
@@ -265,4 +282,12 @@ def prune_gaps(concept: Path) -> PruneResult:
                 _write_gaps(handle, frontmatter, rest, kept)
         finally:
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-    return PruneResult(removed=removed, gaps=len(kept), created=created)
+    # ADR 0012: which kinds apply is a lookup, so the fleet is computed here and the conductor
+    # spawns exactly it. A live run had the conductor misread `applies_to` and skip a fleet.
+    scope = _scope_kinds(contracts.workspace)
+    fleet = tuple(
+        kid for kid, spec in kinds.items()
+        if spec.get("enabled") is not False and type_id in spec["applies_to"]
+        and (scope is None or kid in scope)
+    )
+    return PruneResult(removed=removed, gaps=len(kept), created=created, fleet=fleet, type_id=type_id)

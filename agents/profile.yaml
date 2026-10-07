@@ -76,11 +76,10 @@ agents:
       before: >-
         For every concept, including ones you think are unchanged: run `archivist prune-gaps
         "{concept_path}"` (it drops entries for kinds the contract no longer applies here and
-        adds `okfx_gaps: []` when missing; never edit `okfx_gaps` yourself). Read the gap-kinds
-        contract. The
-        fleet is every kind with `enabled` not false whose `applies_to` holds this concept's
-        type id (concept-types maps the concept's `type` to its id), narrowed to the run plan's
-        `scope.kinds` when that is a list. Spawn the whole fleet in one message.
+        adds `okfx_gaps: []` when missing; never edit `okfx_gaps` yourself). Its `fleet` line
+        is this concept's fleet: the enabled kinds whose `applies_to` holds the concept's type,
+        narrowed to the run plan's `scope.kinds`. Spawn exactly those kinds, one gap-agent each,
+        in one message; `fleet none` means no gap-agent for this concept.
       description: "gap-{kind}-{concept}"
       prompt: "Judge only kind {kind} on {concept_path}."
       done_when: Every kind returned present true or false.

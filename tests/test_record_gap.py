@@ -81,3 +81,42 @@ def test_concurrent_fleet_loses_no_entries(concept: Path) -> None:
     with ProcessPoolExecutor(max_workers=4) as pool:
         assert list(pool.map(_write, [(str(concept), k) for k in kinds * 3])).count("added") == 4
     assert sorted(g["kind"] for g in gaps(concept)) == sorted(kinds)
+
+
+# ------------------------------------------------------------------- the fleet (ADR 0012)
+
+SUBJECT_AREA = """---
+type: Subject Area Overview
+title: Customer Care
+okfx_subject_area: customer-care
+---
+
+## Overview
+"""
+
+
+def test_prune_prints_the_fleet_for_the_concepts_type(concept: Path, warehouse: Path) -> None:
+    from archivist.record_gap import prune_gaps
+
+    applies = [k["id"] for k in yaml.safe_load((warehouse / "contracts/gap-kinds.yaml").read_text())["kinds"]
+               if "business-view-group-overview" in k["applies_to"] and k.get("enabled") is not False]
+    assert list(prune_gaps(concept).fleet) == applies and applies
+    # The live miss: a subject-area overview has a fleet (missing_section applies to it).
+    area = warehouse / "knowledge/subject-areas/customer-care/overview.md"
+    area.write_text(SUBJECT_AREA, encoding="utf-8")
+    assert "missing_section" in prune_gaps(area).fleet
+
+
+def test_the_fleet_leaves_out_disabled_kinds_and_follows_the_run_plans_scope(concept: Path, warehouse: Path) -> None:
+    from archivist.record_gap import prune_gaps
+    from archivist.run_plan import PLAN_REL
+
+    edit_yaml(warehouse / "contracts/gap-kinds.yaml",
+              lambda d: next(k for k in d["kinds"] if k["id"] == "undefined_acronym").update(enabled=False))
+    assert "undefined_acronym" not in prune_gaps(concept).fleet
+    plan = warehouse / PLAN_REL
+    plan.parent.mkdir(parents=True, exist_ok=True)
+    plan.write_text(yaml.safe_dump({"scope": {"kinds": ["missing_section"]}}), encoding="utf-8")
+    assert prune_gaps(concept).fleet == ("missing_section",)
+    plan.write_text(yaml.safe_dump({"scope": {"kinds": "all"}}), encoding="utf-8")
+    assert len(prune_gaps(concept).fleet) > 1
