@@ -15,9 +15,9 @@ Each round:
 4. **Finish in order.** One conductor session catalogs and publishes each group, in plan order,
    one commit per group, from the groups' own summaries.
 
-A document a round leaves in the inbox (an amendment whose primary was authored in the same
-round) is planned again next round; left a second time, it is held for the rest of the run,
-as the serial loop holds it after one try.
+No document waits for another (ADR 0011), so a document a round leaves in the inbox is a stage
+that did not place it: it is planned again next round, and left a second time it is held for the
+rest of the run, so a run never loops on it.
 
 Python decides only scheduling here; every judgement stays with the agents.
 """

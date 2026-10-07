@@ -50,9 +50,14 @@ documents describe the same instance. A type without `identity` is identified by
 |---|---|---|
 | Exactly one, and the intake `grouping` agrees this document belongs to it | update | **ENRICH** that concept at its own path: additive; its title and path stay as they are |
 | None, and the class `mode` is `create` | new | **CREATE** |
-| None, and the class `mode` is `partial` | new | **PARTIAL CREATE** |
-| None, and the class `mode` is `enrich-only` | — | leave the document in the inbox: "awaiting its primary document" |
+| None, and the class `mode` is `partial` (or `enrich-only`, from older contracts) | new | **PARTIAL CREATE** |
 | Several, or one the `grouping` says is a different concept | quarantine | a draft per §6, every candidate path in `candidates` |
+
+**No document waits for another.** With no candidate, the document makes the concept from what
+it supports, whatever kind of document it is (an amendment, a transcript extract, a note): its
+sections are written from it and the rest are stubbed. A later document about the same instance
+finds that concept by identity and adds to it (ENRICH). Never leave a document in the inbox
+for a "primary" one to arrive first.
 
 Record it on the concept as `okfx_placement: {outcome: new}` or
 `okfx_placement: {outcome: update, matched: "<field>: <the value both share>"}`.

@@ -60,7 +60,7 @@ identity, write a **new** one, or **quarantine** it. Recorded on the concept as
 value missing, or ambiguous placement), with `status: quarantined` and `okfx_quarantine`
 saying why and what would resolve it. Their documents wait in `sources/quarantine/`. Nothing in
 it is indexed, judged, scored or published; `archivist requeue` sends it back to the inbox.
-_Avoid_: skipped, left in the inbox (only an `enrich-only` document awaiting its primary stays there)
+_Avoid_: skipped, left in the inbox (no document waits in the inbox for another, ADR 0011)
 
 **Gap kind** / **Gap fleet**:
 A kind in `gap-kinds`, applying to concept types by id. The fleet is one gap-agent per

@@ -97,8 +97,6 @@ End with this report and nothing after it:
     - <concept path> — <create|partial|enrich>, <new|update matched on <field>: <value>>, class <id>, type <id>, structure <id> (<why>)
     Quarantined: <n drafts>
     - <quarantine/ path> — <stub|draft>: <reason> Needs: <needs>
-    Left in inbox:
-    - <document path> — awaiting its primary document
     Sections without evidence: <concept → heading, one per line, or none>
     Self-check cut: <n sentences deleted or cut back, with each concept's count>
     Judgement calls: <each place a contract left the choice to you, or none>

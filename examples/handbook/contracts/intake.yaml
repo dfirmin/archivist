@@ -24,7 +24,7 @@ classes:
       Changes an existing policy: it says what the rule was, or that it updates, replaces or
       extends a policy, even when it restates the whole new rule.
     concept_type: policy
-    mode: enrich-only          # never creates a policy on its own; waits for the policy itself
+    mode: partial              # updates the policy; with none yet, starts it from what the amendment states
     sections: best-fit
   - id: procedure-document
     description: Tells someone how to carry out a task (a runbook, playbook or how-to).
