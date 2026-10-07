@@ -21,7 +21,7 @@ import sys
 import tempfile
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Sequence
@@ -36,6 +36,7 @@ from archivist.dispatch_check import (
 )
 from archivist.engine import Engine, ResolvedRun, load_engine, resolve_run
 from archivist.errors import ArchivistError, DefinitionError
+from archivist.preload import with_contracts
 from archivist.profile import fenced_fields
 from archivist.record_gap import prune_gaps
 from archivist.run_plan import PLAN_REL, build_run_plan, write_run_plan
@@ -48,6 +49,7 @@ CONDUCTOR = "conductor"
 SMOKE_AGENT = "smoke"
 DEFAULT_SMOKE_TOKEN = "SMOKE_OK"
 DEFAULT_PROMPT = f"Reply with exactly the token {DEFAULT_SMOKE_TOKEN} and nothing else."
+PRELOAD_ENV = "ARCHIVIST_PRELOAD_CONTRACTS"  # 0 turns the contract preload off (comparison runs)
 
 # A session that prints nothing for this long is hung; one that runs this long is runaway.
 IDLE_TIMEOUT_S = 1200.0
@@ -114,7 +116,11 @@ def prepare_agent_workspace(
     """
     workspace = workspace.resolve()
     run = resolve_run(workspace, pipeline=pipeline, authoring=authoring)
-    agents = install_engine(workspace, run.engine, spawnable=run.roster.spawnable, harness=harness)
+    engine = run.engine
+    if os.environ.get(PRELOAD_ENV, "1") != "0":
+        # ADR 0009: each agent's prompt carries the contracts it uses, already read.
+        engine = replace(engine, agents=with_contracts(engine.agents, engine.profile, run.contracts))
+    agents = install_engine(workspace, engine, spawnable=run.roster.spawnable, harness=harness)
     plan = write_run_plan(
         workspace, build_run_plan(run.engine.profile, run.roster, run.contracts, kinds=kinds)
     )
@@ -407,6 +413,7 @@ def run_conductor_agent(
     skip_publish: bool = False,
     pipeline: str | None = None,
     continue_branch: bool = False,
+    parallel: int = 1,
 ) -> int:
     """Load the workspace and run conductor sessions over it.
 
@@ -508,6 +515,29 @@ def run_conductor_agent(
         print(f"scope     {total} concept(s) in {len(queue)} session(s); kinds: {', '.join(kinds) or 'all'}")
         print(f"fence     {', '.join(sorted(fence)) if fence is not None else 'off (a stage writes bodies)'}")
     print(f"plan      {prepared.plan.relative_to(workspace)}\n")
+
+    if parallel > 1 and scanning_inbox:
+        # ADR 0009: plan once, run groups' stages in parallel, catalog and publish in order.
+        from archivist.parallel import ParallelRun
+
+        planner = parse_agent(workspace / AGENTS_DIR_REL / f"{profile.planner}.md")
+        print(f"parallel  {parallel} groups at a time\n")
+        return ParallelRun(
+            workspace=workspace,
+            harness=harness,
+            env=env,
+            model=model,
+            planner_model=planner.model or default_model,
+            agents=prepared.agents,
+            profile=profile,
+            roster=roster,
+            branch=branch,
+            skip_publish=skip_publish,
+            parallel=parallel,
+            inbox_limit=inbox_limit,
+            group_limit=group_limit,
+            branch_pushed=continue_branch and not skip_publish,
+        ).run()
 
     def inbox_docs() -> set[str]:
         return {f"{INBOX_DIR}/{p.name}" for p in (workspace / INBOX_DIR).glob("*.md")}

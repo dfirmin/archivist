@@ -13,6 +13,7 @@ structural, not judgement.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from archivist.profile import Profile, Roster, entry_stage
 from archivist.stream import StreamMonitor
@@ -50,6 +51,28 @@ def first_group_documents(monitor: StreamMonitor, planner: str) -> list[str]:
         return []
     end = starts[1] if len(starts) > 1 else len(text)
     return _DOC_LINE.findall(text[starts[0]:end])
+
+
+@dataclass(frozen=True, slots=True)
+class PlannedGroup:
+    slug: str
+    label: str
+    documents: tuple[str, ...]
+
+
+_GROUP_HEAD = re.compile(r"^\s*Group\s+\d+\s*:\s*([a-z0-9][a-z0-9-]*)\s*(?:[—–-]+\s*(.*))?$", re.MULTILINE)
+
+
+def parse_plan(text: str) -> list[PlannedGroup]:
+    """Every group of a planner reply, in order (the queue the parallel runner works through)."""
+    heads = list(_GROUP_HEAD.finditer(text))
+    groups: list[PlannedGroup] = []
+    for i, head in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        documents = tuple(dict.fromkeys(_DOC_LINE.findall(text[head.end():end])))
+        if documents:
+            groups.append(PlannedGroup(head.group(1), (head.group(2) or "").strip(), documents))
+    return groups
 
 
 def planner_gave_up(monitor: StreamMonitor, planner: str) -> bool:

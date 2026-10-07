@@ -191,6 +191,7 @@ def _run_conductor(args: argparse.Namespace) -> int:
         skip_publish=args.skip_publish,
         pipeline=args.pipeline,
         continue_branch=args.continue_branch,
+        parallel=args.parallel,
     )
 
 
@@ -330,6 +331,8 @@ def build_parser() -> argparse.ArgumentParser:
                            help="Concepts per conductor session (default 10)")
     conductor.add_argument("--pipeline", help="Pipeline to run (default: the target's, else the engine's)")
     conductor.add_argument("--skip-publish", action="store_true", help="No branch, commit, push, PR or issues")
+    conductor.add_argument("--parallel", type=int, default=1,
+                           help="Inbox scan: run up to N groups' stages at once (default 1, the serial loop; ADR 0009)")
     conductor.add_argument("--continue-branch", action="store_true",
                            help="Add to the branch (and PR) named by RUN_BRANCH that an earlier run pushed")
     conductor.add_argument("--engine", help=ENGINE_HELP)

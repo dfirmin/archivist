@@ -47,6 +47,12 @@ moves), `quarantine/` (when it exists), `log.md` and `index.md`. Nothing else is
 git add knowledge sources log.md index.md $(test -d quarantine && echo quarantine)
 ```
 
+A **finishing** session publishes groups that earlier sessions ran, so the working tree holds
+all of them at once. Stage one group at a time, then commit it before the next: its concept
+files, its quarantined drafts, every path its documents moved through (`git add -A` on each
+document's `sources/inbox/`, `sources/processed/` and `sources/quarantine/` path), then
+`log.md` and `index.md`.
+
 `contracts/`, `okf/`, `.claude/`, `tmp/`, `AGENTS.md` and `README.md` stay unstaged:
 contracts change only by human pull request, and `.claude/` is generated for the run. An empty
 `git status --porcelain` means there is nothing to publish: stop here.
