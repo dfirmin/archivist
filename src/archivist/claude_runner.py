@@ -1,10 +1,12 @@
-"""Headless Claude Code runner: load the workspace, then hand the run to the conductor.
+"""Headless runner: load the workspace, then hand the run to the conductor.
 
-One primitive does the work: ``claude -p --agent conductor --output-format stream-json``.
+One primitive does the work: a headless session running *as* the conductor — on Claude Code
+``claude -p --agent conductor --output-format stream-json``, on Pi ``pi --mode json -p`` with
+the engine extension (ADR 0008; ``ARCHIVIST_HARNESS`` chooses, see ``archivist.harness``).
 The conductor is an engine agent running as the main thread. Python validates the target's
-contracts for the chosen pipeline, installs the engine's skills and agents into
-``<workspace>/.claude/``, writes the run plan, states the job in a short kickoff, launches
-the session, checks that the entry stage ran, and records transcripts.
+contracts for the chosen pipeline, installs the engine's skills and agents for the harness,
+writes the run plan, states the job in a short kickoff, launches the session, checks that the
+entry stage ran, and records transcripts.
 
 Docker is the isolation boundary, so sessions run with permissions bypassed.
 """
@@ -24,8 +26,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Sequence
 
-from archivist.agents import engine_agents_root, parse_agent, write_agent_definitions
-from archivist.config import ConfigError, resolve_auth
+from archivist.agents import engine_agents_root, parse_agent
+from archivist.config import AuthConfig, ConfigError, resolve_auth
 from archivist.dispatch_check import (
     check_entry_stage_ran,
     first_group_documents,
@@ -37,8 +39,8 @@ from archivist.errors import ArchivistError, DefinitionError
 from archivist.profile import fenced_fields
 from archivist.record_gap import prune_gaps
 from archivist.run_plan import PLAN_REL, build_run_plan, write_run_plan
+from archivist.harness import AGENTS_DIR_REL, SKILLS_DIR_REL, ClaudeCodeHarness, Harness, get_harness
 from archivist.scope import GAP_STAGE, ScopeError, batches, bundle_file, fence_violations, select, snapshot
-from archivist.skills import install_skills, reset_path
 from archivist.stream import StreamMonitor
 from archivist.workspace import INBOX_DIR, PROCESSED_DIR
 
@@ -51,22 +53,29 @@ DEFAULT_PROMPT = f"Reply with exactly the token {DEFAULT_SMOKE_TOKEN} and nothin
 IDLE_TIMEOUT_S = 1200.0
 SESSION_TIMEOUT_S = 7200.0
 
-SKILLS_DIR_REL = Path(".claude") / "skills"
-AGENTS_DIR_REL = Path(".claude") / "agents"
+__all__ = ["AGENTS_DIR_REL", "SKILLS_DIR_REL"]
 
 
 # --------------------------------------------------------------------------- auth / env
 
 
-def _resolve_run_env(base_env: dict[str, str]) -> tuple[dict[str, str], str | None] | None:
-    """Print the auth line and return (env for claude, default model); None after a failure."""
+def _resolve_run_env(base_env: dict[str, str]) -> tuple[dict[str, str], str | None, AuthConfig] | None:
+    """Print the auth line and return (env for the session, default model, auth); None after a failure."""
     try:
         auth = resolve_auth(base_env)
     except ConfigError as err:
         print(f"FAIL  {err}", file=sys.stderr)
         return None
     print(auth.describe())
-    return auth.apply(base_env), auth.model
+    return auth.apply(base_env), auth.model, auth
+
+
+def _harness() -> Harness | None:
+    try:
+        return get_harness()
+    except ConfigError as err:
+        print(f"FAIL  {err}", file=sys.stderr)
+        return None
 
 
 # ----------------------------------------------------------------------- workspace load
@@ -80,18 +89,15 @@ class PreparedWorkspace:
     plan: Path
 
 
-def install_engine(workspace: Path, engine: Engine, *, spawnable: tuple[str, ...]) -> tuple[str, ...]:
-    """Copy engine skills and write engine agents into ``<workspace>/.claude/``."""
-    install_skills(engine.skills, workspace / SKILLS_DIR_REL)
-    reset_path(workspace / AGENTS_DIR_REL)
-    written = write_agent_definitions(
-        engine.agents,
-        workspace / AGENTS_DIR_REL,
-        coordinator=engine.profile.coordinator,
-        spawnable=spawnable,
-        available_skills=set(engine.skills),
-    )
-    return tuple(path.stem for path in written)
+def install_engine(
+    workspace: Path,
+    engine: Engine,
+    *,
+    spawnable: tuple[str, ...],
+    harness: Harness | None = None,
+) -> tuple[str, ...]:
+    """Install engine skills and agents where the harness finds them (``<workspace>/.claude/``)."""
+    return (harness or ClaudeCodeHarness()).install(workspace, engine, spawnable=spawnable)
 
 
 def prepare_agent_workspace(
@@ -100,6 +106,7 @@ def prepare_agent_workspace(
     pipeline: str | None = None,
     authoring: bool | None = None,
     kinds: Sequence[str] | None = None,
+    harness: Harness | None = None,
 ) -> PreparedWorkspace:
     """Validate contracts for the pipeline, install the engine, write the run plan.
 
@@ -107,7 +114,7 @@ def prepare_agent_workspace(
     """
     workspace = workspace.resolve()
     run = resolve_run(workspace, pipeline=pipeline, authoring=authoring)
-    agents = install_engine(workspace, run.engine, spawnable=run.roster.spawnable)
+    agents = install_engine(workspace, run.engine, spawnable=run.roster.spawnable, harness=harness)
     plan = write_run_plan(
         workspace, build_run_plan(run.engine.profile, run.roster, run.contracts, kinds=kinds)
     )
@@ -124,27 +131,8 @@ def build_claude_argv(
     agent: str | None = None,
     system_prompt: str | None = None,
 ) -> list[str]:
-    """The headless command. The prompt goes in on stdin, not argv.
-
-    ``agent`` runs the session *as* that agent (its prompt, tools and roster); the smoke
-    check has no agent file for its supervisor and passes ``system_prompt`` instead.
-    """
-    if (agent is None) == (system_prompt is None):
-        raise ValueError("pass exactly one of agent or system_prompt")
-    argv = [
-        "claude",
-        "-p",
-        "--output-format",
-        "stream-json",
-        "--verbose",
-        *(["--model", model] if model else []),
-        "--permission-mode",
-        "bypassPermissions",
-    ]
-    if agent is not None:
-        return [*argv, "--agent", agent]
-    assert system_prompt is not None
-    return [*argv, "--append-system-prompt", system_prompt]
+    """The Claude Code headless command. The prompt goes in on stdin, not argv."""
+    return ClaudeCodeHarness().argv(model=model, workspace=Path("."), agent=agent, system_prompt=system_prompt)
 
 
 def _terminate(proc: subprocess.Popen[str]) -> None:
@@ -231,11 +219,15 @@ def run_claude_smoke(
     *,
     model: str | None,
     env: dict[str, str],
+    harness: Harness | None = None,
+    workspace: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    """Call Claude Code directly, with no skills or sub-agents, to prove auth and model."""
+    """Call the harness directly, with no skills or sub-agents, to prove auth and model."""
+    argv = (harness or ClaudeCodeHarness()).smoke_argv(prompt, model=model, workspace=workspace or Path("."))
     return subprocess.run(
-        ["claude", "-p", prompt, *(["--model", model] if model else []), "--output-format", "text"],
+        argv,
         env=env,
+        cwd=workspace,
         capture_output=True,
         text=True,
         check=False,
@@ -248,8 +240,11 @@ def run_smoke_agent(
     *,
     expect_token: str = DEFAULT_SMOKE_TOKEN,
 ) -> int:
-    """Prove Claude Code answers, then that a headless session can spawn a sub-agent."""
+    """Prove the harness answers, then that a headless session can spawn a sub-agent."""
     agent_path = engine_agents_root() / f"{SMOKE_AGENT}.md"
+    harness = _harness()
+    if harness is None:
+        return 1
     try:
         smoke = parse_agent(agent_path)
         engine = load_engine()
@@ -260,42 +255,47 @@ def run_smoke_agent(
     resolved = _resolve_run_env(dict(os.environ))
     if resolved is None:
         return 1
-    env, default_model = resolved
+    base_env, default_model, auth = resolved
     model = smoke.model or default_model
+    print(f"harness   {harness.name}")
     print(f"model     {model or 'Claude Code default'}")
     print(f"agent     {agent_path}")
     print("sandbox   none (Docker boundary)")
     print(f"prompt    {prompt!r}\n")
 
-    claude = run_claude_smoke(prompt, model=model, env=env)
-    if claude.returncode != 0:
-        combined = claude.stdout + claude.stderr
-        if "Claude Code is not enabled" in combined:
-            print(
-                "FAIL  the gateway denied the Claude Code client (a gateway access policy); "
-                "try CLAUDE_AUTH_MODE=anthropic-api with ANTHROPIC_API_KEY to rule out the gateway.",
-                file=sys.stderr,
-            )
-        else:
-            print("FAIL  claude -p", file=sys.stderr)
-        sys.stderr.write(combined)
-        return claude.returncode
-    if expect_token not in claude.stdout:
-        print(f"FAIL  expected {expect_token!r} in claude output", file=sys.stderr)
-        return 1
-    print("PASS  claude -p smoke")
-
     scratch = Path(tempfile.mkdtemp(prefix="archivist-smoke-"))
     try:
-        written = install_engine(scratch, engine, spawnable=(smoke.name,))
+        try:
+            written = install_engine(scratch, engine, spawnable=(smoke.name,), harness=harness)
+            env = harness.session_env(base_env, auth, scratch)
+        except ArchivistError as err:
+            print(f"FAIL  {err}", file=sys.stderr)
+            return 1
+        direct = run_claude_smoke(prompt, model=model, env=env, harness=harness, workspace=scratch)
+        if direct.returncode != 0 or expect_token not in direct.stdout:
+            combined = direct.stdout + direct.stderr
+            if "Claude Code is not enabled" in combined:
+                print(
+                    "FAIL  the gateway denied the Claude Code client (a gateway access policy); "
+                    "try CLAUDE_AUTH_MODE=anthropic-api with ANTHROPIC_API_KEY to rule out the gateway.",
+                    file=sys.stderr,
+                )
+            elif direct.returncode != 0:
+                print(f"FAIL  {harness.name} -p", file=sys.stderr)
+            else:
+                print(f"FAIL  expected {expect_token!r} in {harness.name} output", file=sys.stderr)
+            sys.stderr.write(combined)
+            return direct.returncode or 1
+        print(f"PASS  {harness.name} -p smoke")
+
         supervisor = (
             f"You are a smoke-test supervisor. Spawn the `{smoke.name}` sub-agent with the "
             f"`Agent` tool (subagent_type `{smoke.name}`) using exactly this prompt: {prompt!r}. "
             "Then reply with only the text the sub-agent returned."
         )
-        monitor = StreamMonitor(required_agents=written)
+        monitor = harness.monitor(required_agents=written, workspace=scratch)
         code = launch_claude(
-            build_claude_argv(model=model, system_prompt=supervisor),
+            harness.argv(model=model, workspace=scratch, system_prompt=supervisor),
             env=env,
             cwd=scratch,
             prompt="Begin.",
@@ -417,6 +417,9 @@ def run_conductor_agent(
     if not workspace.is_dir():
         print(f"FAIL  workspace not found: {workspace}", file=sys.stderr)
         return 1
+    harness = _harness()
+    if harness is None:
+        return 1
     on_concepts = bool(concept_files)
     try:
         if inbox_file and on_concepts:
@@ -426,7 +429,7 @@ def run_conductor_agent(
         if inbox_file:
             inbox_file = bundle_file(workspace, inbox_file, label="inbox file")
         prepared = prepare_agent_workspace(
-            workspace, pipeline=pipeline, authoring=not on_concepts, kinds=kinds or None
+            workspace, pipeline=pipeline, authoring=not on_concepts, kinds=kinds or None, harness=harness
         )
         run = prepared.run
         queue: list[tuple[str, ...]] = []
@@ -450,7 +453,12 @@ def run_conductor_agent(
     resolved = _resolve_run_env(dict(os.environ))
     if resolved is None:
         return 1
-    env, default_model = resolved
+    base_env, default_model, auth = resolved
+    try:
+        env = harness.session_env(base_env, auth, workspace)
+    except ArchivistError as err:
+        print(f"FAIL  {err}", file=sys.stderr)
+        return 1
     model = conductor.model or default_model
 
     branch = env.get("RUN_BRANCH") or run_branch(inbox_file)
@@ -490,6 +498,7 @@ def run_conductor_agent(
     )
     print(f"workspace {workspace}")
     print(f"target    {run.contracts.slug}")
+    print(f"harness   {harness.name}")
     print(f"model     {model or 'Claude Code default'}")
     print(f"pipeline  {roster.pipeline}: {', '.join(roster.stages)}")
     print(f"roster    {', '.join(roster.spawnable)}")
@@ -517,6 +526,7 @@ def run_conductor_agent(
     consumed_total = 0
     session = 0
     planner_retries = 0
+    run_started = time.monotonic()
     while True:
         session += 1
         before_docs = inbox_docs()
@@ -545,14 +555,16 @@ def run_conductor_agent(
                 print(f"FAIL  {err}", file=sys.stderr)
                 return 1
         fence_before = snapshot(workspace) if fence is not None else None
-        monitor = StreamMonitor(required_agents=prepared.agents)
+        monitor = harness.monitor(required_agents=prepared.agents, workspace=workspace)
+        session_started = time.monotonic()
         code = launch_claude(
-            build_claude_argv(model=model, agent=CONDUCTOR),
+            harness.argv(model=model, workspace=workspace, agent=CONDUCTOR),
             env=env,
             cwd=workspace,
             prompt=kickoff,
             monitor=monitor,
         )
+        print(f"[timing] session {session} {time.monotonic() - session_started:.1f}s")
         try:
             written = monitor.write_transcripts(workspace)
             print(f"transcripts {len(written)} file(s)")
@@ -610,5 +622,6 @@ def run_conductor_agent(
             break
         if group_limit and session >= group_limit:
             break
+    print(f"[timing] run {time.monotonic() - run_started:.1f}s")
     print(f"PASS  conductor finished{f' ({session} sessions)' if session > 1 else ''}")
     return 0
